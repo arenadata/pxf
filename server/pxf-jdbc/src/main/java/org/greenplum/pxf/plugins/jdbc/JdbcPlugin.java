@@ -117,6 +117,14 @@ public class JdbcPlugin extends Plugin {
                 throw new UserDataException("POOL_SIZE is incorrect: must be an integer");
             }
         }
+
+        // This parameter is not required. The default value is null
+        preQuerySql = input.getUserProperty("PRE_SQL");
+        if (preQuerySql != null) {
+            if (input.getUserProperty("STOP_IF_PRE_FAILS") != null) {
+                stopIfPreQueryFails = true;
+            }
+        }
     }
 
     /**
@@ -218,6 +226,10 @@ public class JdbcPlugin extends Plugin {
     protected String pass = null;
 
     protected String tableName = null;
+
+    // User-defined parameters for all queries
+    protected String preQuerySql = null;
+    protected boolean stopIfPreQueryFails = false;
 
     // '100' is a recommended value: https://docs.oracle.com/cd/E11882_01/java.112/e16548/oraperf.htm#JJDBC28754
     public static final int DEFAULT_BATCH_SIZE = 100;

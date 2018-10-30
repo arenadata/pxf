@@ -1,130 +1,122 @@
-// package org.greenplum.pxf.plugins.ignite;
+package org.greenplum.pxf.plugins.ignite;
 
-// /*
-//  * Licensed to the Apache Software Foundation (ASF) under one
-//  * or more contributor license agreements.  See the NOTICE file
-//  * distributed with this work for additional information
-//  * regarding copyright ownership.  The ASF licenses this file
-//  * to you under the Apache License, Version 2.0 (the
-//  * "License"); you may not use this file except in compliance
-//  * with the License.  You may obtain a copy of the License at
-//  *
-//  *   http://www.apache.org/licenses/LICENSE-2.0
-//  *
-//  * Unless required by applicable law or agreed to in writing,
-//  * software distributed under the License is distributed on an
-//  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-//  * KIND, either express or implied.  See the License for the
-//  * specific language governing permissions and limitations
-//  * under the License.
-//  */
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 
-// import org.greenplum.pxf.api.OneRow;
-// import org.greenplum.pxf.api.io.DataType;
-// import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-// import org.greenplum.pxf.api.utilities.InputData;
+import org.greenplum.pxf.api.OneRow;
+import org.greenplum.pxf.api.io.DataType;
+import org.greenplum.pxf.api.utilities.ColumnDescriptor;
+import org.greenplum.pxf.api.utilities.InputData;
 
-// import java.util.ArrayList;
-// import java.util.List;
+import java.sql.Date;
+import java.util.ArrayList;
+import java.util.List;
 
-// import com.google.gson.JsonArray;
-// import com.google.gson.JsonObject;
+import org.junit.Test;
+import org.junit.Before;
+import org.junit.runner.RunWith;
+import static org.junit.Assert.*;
 
-// import org.junit.Test;
-// import org.junit.Before;
-// import org.junit.runner.RunWith;
-// import static org.junit.Assert.*;
+import org.apache.ignite.Ignition;
+import org.apache.ignite.cache.query.FieldsQueryCursor;
+import org.apache.ignite.cache.query.SqlFieldsQuery;
+import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.configuration.ClientConfiguration;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import static org.mockito.Matchers.any;
 
-// import org.mockito.ArgumentCaptor;
-// import org.mockito.Mockito;
-// import static org.mockito.Matchers.anyString;
-
-// import org.powermock.api.mockito.PowerMockito;
-// import org.powermock.core.classloader.annotations.PrepareForTest;
-// import org.powermock.modules.junit4.PowerMockRunner;
-// import static org.powermock.api.support.membermodification.MemberMatcher.method;
+import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 
-// @RunWith(PowerMockRunner.class)
-// @PrepareForTest({IgniteAccessor.class})
-// public class IgniteAccessorTest {
-//     @Before
-//     public void prepareAccessorTest() throws Exception {
-//         inputData = Mockito.mock(InputData.class);
+@RunWith(PowerMockRunner.class)
+@PrepareForTest({IgniteAccessor.class, Ignition.class, ClientConfiguration.class, IgniteClient.class, SqlFieldsQuery.class, FieldsQueryCursor.class})
+public class IgniteAccessorTest {
+    @Mock
+    private InputData inputData;
+    private ArrayList<ColumnDescriptor> columns = new ArrayList<>();
 
-//         Mockito.when(inputData.getDataSource()).thenReturn("TableTest");
+    @Mock
+    private IgniteClient igniteClient;
+    @Mock
+    private FieldsQueryCursor<List<?>> cursor;
 
-//         columns.add(new ColumnDescriptor("id", DataType.INTEGER.getOID(), 0, "int4", null));
-//         columns.add(new ColumnDescriptor("name", DataType.TEXT.getOID(), 1, "text", null));
-//         columns.add(new ColumnDescriptor("birthday", DataType.DATE.getOID(), 2, "date", null));
-//         columns.add(new ColumnDescriptor("key", DataType.BYTEA.getOID(), 3, "bytea", null));
-//         Mockito.when(inputData.getTupleDescription()).thenReturn(columns);
-//         Mockito.when(inputData.getColumn(0)).thenReturn(columns.get(0));
-//         Mockito.when(inputData.getColumn(1)).thenReturn(columns.get(1));
-//         Mockito.when(inputData.getColumn(2)).thenReturn(columns.get(2));
-//         Mockito.when(inputData.getColumn(3)).thenReturn(columns.get(3));
-//     }
+    @Before
+    public void prepareAccessorTest() throws Exception {
+        // InputData
+        PowerMockito.when(inputData.getDataSource()).thenReturn("TableTest");
+        PowerMockito.when(inputData.getUserProperty("HOST")).thenReturn("0.0.0.0");
+        PowerMockito.when(inputData.hasFilter()).thenReturn(false);
+        columns.add(new ColumnDescriptor("id", DataType.INTEGER.getOID(), 0, "int4", null));
+        columns.add(new ColumnDescriptor("name", DataType.TEXT.getOID(), 1, "text", null));
+        columns.add(new ColumnDescriptor("birthday", DataType.DATE.getOID(), 2, "date", null));
+        PowerMockito.when(inputData.getTupleDescription()).thenReturn(columns);
+        PowerMockito.when(inputData.getColumn(0)).thenReturn(columns.get(0));
+        PowerMockito.when(inputData.getColumn(1)).thenReturn(columns.get(1));
+        PowerMockito.when(inputData.getColumn(2)).thenReturn(columns.get(2));
 
-//     @Test
-//     public void testReadAccess() throws Exception {
-//         IgniteAccessor acc = PowerMockito.spy(new IgniteAccessor(inputData));
+        // Fill result and mock it
+        List<Object> result_row = new ArrayList<>();
+        result_row.add(Object.class.cast(new Integer(1)));
+        result_row.add(Object.class.cast(new String("Mocked name")));
+        result_row.add(Object.class.cast(new Date(946674000)));
+        result.add(result_row);
 
-//         JsonObject correctAnswer = new JsonObject();
-//         JsonArray tempArray = new JsonArray();
-//         JsonArray tempArray2 = new JsonArray();
-//         tempArray2.add(1);
-//         tempArray2.add("abcd");
-//         tempArray2.add("'2001-01-01'");
-//         tempArray2.add("YWJjZA==");
-//         tempArray.add(tempArray2);
-//         correctAnswer.add("items", tempArray);
-//         correctAnswer.addProperty("last", false);
-//         correctAnswer.addProperty("queryId", 1);
+        result_row = new ArrayList<Object>(result_row);
+        result_row.set(0, Object.class.cast(new Integer(2)));
+        result.add(new ArrayList<Object>(result_row));
 
-//         ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
-//         PowerMockito.doReturn(correctAnswer).when(acc, "sendRestRequest", anyString());
+        result_row = new ArrayList<Object>(result_row);
+        result_row.set(0, Object.class.cast(new Integer(3)));
+        result.add(new ArrayList<Object>(result_row));
 
-//         acc.openForRead();
-//         acc.readNextObject();
-//         acc.closeForRead();
+        // Ignite Client
+        PowerMockito.mockStatic(Ignition.class);
+        PowerMockito.when(cursor.getAll()).thenReturn(null);
+        Mockito.when(cursor.iterator()).thenReturn(result.iterator());
+        PowerMockito.when(igniteClient.query(any(SqlFieldsQuery.class))).thenReturn(cursor);
+        PowerMockito.when(Ignition.startClient(any(ClientConfiguration.class))).thenReturn(igniteClient);
+    }
 
-//         PowerMockito.verifyPrivate(acc, Mockito.times(3)).invoke(method(IgniteAccessor.class, "sendRestRequest", String.class)).withArguments(captor.capture());
+    @Test
+    public void testReadAccess() throws Exception {
+        IgniteAccessor acc = PowerMockito.spy(new IgniteAccessor(inputData));
 
-//         List<String> allParams = captor.getAllValues();
+        // Conduct test
+        OneRow rows[] = new OneRow[3];
+        acc.openForRead();
+        rows[0] = acc.readNextObject();
+        rows[1] = acc.readNextObject();
+        rows[2] = acc.readNextObject();
+        Object rows_4 = acc.readNextObject();
+        acc.closeForRead();
 
-//         assertEquals(allParams.get(0), "http://127.0.0.1:8080/ignite?cmd=qryfldexe&pageSize=0&qry=SELECT+id%2C+name%2C+birthday%2C+key+FROM+TableTest");
-//         assertEquals(allParams.get(1), "http://127.0.0.1:8080/ignite?cmd=qryfetch&pageSize=128&qryId=1");
-//         assertEquals(allParams.get(2), "http://127.0.0.1:8080/ignite?cmd=qrycls&qryId=1");
-//     }
+        // Asserts
+        assertNull(rows_4);
+        assertEquals(new Integer(1), Integer.class.cast(List.class.cast(rows[0].getData()).get(0)));
+        assertEquals(new String("Mocked name"), String.class.cast(List.class.cast(rows[0].getData()).get(1)));
+        assertEquals(new Date(946674000), Date.class.cast(List.class.cast(rows[0].getData()).get(2)));
+        assertEquals(new Integer(2), Integer.class.cast(List.class.cast(rows[1].getData()).get(0)));
+        assertEquals(new Integer(3), Integer.class.cast(List.class.cast(rows[2].getData()).get(0)));
+    }
 
-//     @Test
-//     public void testWriteAccess() throws Exception {
-//         IgniteAccessor acc = PowerMockito.spy(new IgniteAccessor(inputData));
-
-//         OneRow insert_row_1 = new OneRow("(1, 'abcd', '2001-01-01', '61626364')");
-//         OneRow insert_row_2 = new OneRow("(2, 'abcd', '2001-01-01', '61626364')");
-
-//         JsonObject correctAnswer = new JsonObject();
-//         correctAnswer.addProperty("queryId", 1);
-
-//         ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
-//         PowerMockito.doReturn(correctAnswer).when(acc, "sendRestRequest", anyString());
-
-//         acc.openForWrite();
-//         acc.writeNextObject(insert_row_1);
-//         acc.writeNextObject(insert_row_2);
-//         acc.closeForWrite();
-
-//         PowerMockito.verifyPrivate(acc, Mockito.times(4)).invoke(method(IgniteAccessor.class, "sendRestRequest", String.class)).withArguments(captor.capture());
-
-//         List<String> allParams = captor.getAllValues();
-
-//         assertEquals(allParams.get(0), "http://127.0.0.1:8080/ignite?cmd=qryfldexe&pageSize=0&qry=INSERT+INTO+TableTest%28id%2C+name%2C+birthday%2C+key%29+VALUES+%281%2C+%27abcd%27%2C+%272001-01-01%27%2C+%2761626364%27%29");
-//         assertEquals(allParams.get(1), "http://127.0.0.1:8080/ignite?cmd=qrycls&qryId=1");
-//         assertEquals(allParams.get(2), "http://127.0.0.1:8080/ignite?cmd=qryfldexe&pageSize=0&qry=INSERT+INTO+TableTest%28id%2C+name%2C+birthday%2C+key%29+VALUES+%282%2C+%27abcd%27%2C+%272001-01-01%27%2C+%2761626364%27%29");
-//         assertEquals(allParams.get(3), "http://127.0.0.1:8080/ignite?cmd=qrycls&qryId=1");
-//     }
-
-//     private ArrayList<ColumnDescriptor> columns = new ArrayList<>();
-//     private InputData inputData = null;
-// }
+    private List<List<?>> result = new ArrayList<List<?>>();
+}

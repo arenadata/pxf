@@ -22,6 +22,8 @@ package org.greenplum.pxf.plugins.jdbc.writercallable;
 import org.greenplum.pxf.api.OneRow;
 import org.greenplum.pxf.plugins.jdbc.JdbcBasePlugin;
 import org.greenplum.pxf.plugins.jdbc.JdbcResolver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.BatchUpdateException;
 import java.util.LinkedList;
@@ -70,7 +72,15 @@ class BatchWriterCallable implements WriterCallable {
         }
 
         try {
-            statement.executeBatch();
+            if (LOG.isDebugEnabled()) {
+                long startTime = System.nanoTime();
+                statement.executeBatch();
+                double elapsedTime = (System.nanoTime() - startTime) / 1000000.0;
+                LOG.debug("Batch execution time: {}ms", elapsedTime);
+            }
+            else {
+                statement.executeBatch();
+            }
         }
         catch (BatchUpdateException bue) {
             SQLException cause = bue.getNextException();
@@ -105,6 +115,8 @@ class BatchWriterCallable implements WriterCallable {
 
         rows = new LinkedList<>();
     }
+
+    private static final Logger LOG = LoggerFactory.getLogger(BatchWriterCallable.class);
 
     private final JdbcBasePlugin plugin;
     private final String query;

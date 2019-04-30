@@ -151,15 +151,42 @@ public class WritableResource extends BaseResource {
     private Response writeResponse(Bridge bridge, String path, InputStream inputStream)
             throws Exception {
         // Open the output file
-        bridge.beginIteration();
+        if (LOG.isDebugEnabled()) {
+            long startTime = System.nanoTime();
+            bridge.beginIteration();
+            LOG.debug("Elapsed time of beginIteration(): {}ms", (System.nanoTime() - startTime) / 1000000.0);
+        }
+        else {
+            bridge.beginIteration();
+        }
         long totalWritten = 0;
         Exception ex = null;
 
         // dataStream will close automatically in the end of the try.
         // inputStream is closed by dataStream.close().
         try (DataInputStream dataStream = new DataInputStream(inputStream)) {
-            while (bridge.setNext(dataStream)) {
-                ++totalWritten;
+            if (LOG.isDebugEnabled()) {
+                long elapsedTime = 0;
+                long maxTime = 0;
+                long minTime = Long.MAX_VALUE;
+                long currentStartTime = System.nanoTime();
+                while (bridge.setNext(dataStream)) {
+                    long currentElapsedTime = System.nanoTime() - currentStartTime;
+                    elapsedTime += currentElapsedTime;
+                    maxTime = maxTime < currentElapsedTime ? currentElapsedTime : maxTime;
+                    minTime = minTime > currentElapsedTime ? currentElapsedTime : minTime;
+                    ++totalWritten;
+                    currentStartTime = System.nanoTime();
+                }
+                LOG.debug("Elapsed time of setNext() calls: {}ms", elapsedTime / 1000000.0);
+                LOG.debug("Average time of setNext() call: {}ms", (elapsedTime / 1000000.0) / totalWritten);
+                LOG.debug("Maximum time of setNext() call: {}ms", maxTime / 1000000.0);
+                LOG.debug("Minimum time of setNext() call: {}ms", minTime / 1000000.0);
+            }
+            else {
+                while (bridge.setNext(dataStream)) {
+                    ++totalWritten;
+                }
             }
         } catch (ClientAbortException cae) {
             LOG.error("Remote connection closed by GPDB", cae);
@@ -169,7 +196,14 @@ public class WritableResource extends BaseResource {
             throw ex;
         } finally {
             try {
-                bridge.endIteration();
+                if (LOG.isDebugEnabled()) {
+                    long startTime = System.nanoTime();
+                    bridge.endIteration();
+                    LOG.debug("Elapsed time of endIteration(): {}ms", (System.nanoTime() - startTime) / 1000000.0);
+                }
+                else {
+                    bridge.endIteration();
+                }
             } catch (Exception e) {
                 throw (ex == null) ? e: ex;
             }

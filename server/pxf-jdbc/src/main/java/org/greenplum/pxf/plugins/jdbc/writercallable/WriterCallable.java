@@ -32,16 +32,12 @@ public interface WriterCallable extends Callable<SQLException> {
      * Pass the next OneRow to this WriterCallable.
      *
      * @param row row
-     * @throws IllegalStateException if this WriterCallable must be call()ed before the next call to supply()
-     */
-    void supply(OneRow row) throws IllegalStateException;
-
-    /**
-     * Check whether this WriterCallable must be called
-     *
      * @return true if this WriterCallable must be call()ed before the next call to supply(), false otherwise
+     *
+     * Note that no exception is thrown if this procedure is called right after it returned true (in other words,
+     * the caller must guarantee consistency of the underlying list of tuples)
      */
-    boolean isCallRequired();
+    boolean supply(OneRow row) throws IllegalStateException;
 
     /**
      * Execute an INSERT query.

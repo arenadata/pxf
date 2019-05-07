@@ -34,19 +34,9 @@ import java.sql.SQLException;
  */
 class SimpleWriterCallable implements WriterCallable {
     @Override
-    public void supply(OneRow row) throws IllegalStateException {
-        if (this.row != null) {
-            throw new IllegalStateException("Trying to supply() a OneRow object to a full WriterCallable");
-        }
-        if (row == null) {
-            throw new IllegalArgumentException("Trying to supply() a null OneRow object");
-        }
+    public boolean supply(OneRow row) {
         this.row = row;
-    }
-
-    @Override
-    public boolean isCallRequired() {
-        return this.row != null;
+        return row != null;
     }
 
     @Override

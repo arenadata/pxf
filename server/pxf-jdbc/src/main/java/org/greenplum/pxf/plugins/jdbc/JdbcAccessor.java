@@ -150,19 +150,20 @@ public class JdbcAccessor extends JdbcBasePlugin implements Accessor {
         }
 
         // Process poolSize
-        if (poolSize < 1) {
+        if (poolSize < 0) {
             poolSize = Runtime.getRuntime().availableProcessors();
             LOG.info(
                 "The POOL_SIZE is set to the number of CPUs available (" + Integer.toString(poolSize) + ")"
             );
         }
-        if (poolSize > 1) {
+        if (poolSize > 0) {
             executorServiceWrite = Executors.newFixedThreadPool(poolSize);
             poolTasks = new LinkedList<>();
+            writerCallableFactory = new WriterCallableFactory(this, queryWrite, null, batchSize);
         }
-
-        // Setup WriterCallableFactory
-        writerCallableFactory = new WriterCallableFactory(this, queryWrite, statementWrite, batchSize, poolSize);
+        else {
+            writerCallableFactory = new WriterCallableFactory(this, queryWrite, statementWrite, batchSize);
+        }
 
         writerCallable = writerCallableFactory.get();
 
@@ -191,9 +192,8 @@ public class JdbcAccessor extends JdbcBasePlugin implements Accessor {
             throw new IllegalStateException("The JDBC connection was not properly initialized (writerCallable is null)");
         }
 
-        writerCallable.supply(row);
-        if (writerCallable.isCallRequired()) {
-            if (poolSize > 1) {
+        if (writerCallable.supply(row)) {
+            if (poolSize > 0) {
                 // Pooling is used. Create new writerCallable
                 poolTasks.add(executorServiceWrite.submit(writerCallable));
                 writerCallable = writerCallableFactory.get();
@@ -221,7 +221,7 @@ public class JdbcAccessor extends JdbcBasePlugin implements Accessor {
         }
 
         try {
-            if (poolSize > 1) {
+            if (poolSize > 0) {
                 // Process thread pool
                 Exception firstException = null;
                 for (Future<SQLException> task : poolTasks) {

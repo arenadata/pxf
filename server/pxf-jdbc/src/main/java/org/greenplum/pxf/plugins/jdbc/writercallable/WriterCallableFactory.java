@@ -38,14 +38,11 @@ public class WriterCallableFactory {
      * Create a new instance of the factory.
      *
      */
-    public WriterCallableFactory(JdbcBasePlugin plugin, String query, PreparedStatement statement, int batchSize, int poolSize) {
+    public WriterCallableFactory(JdbcBasePlugin plugin, String query, PreparedStatement statement, int batchSize) {
         this.plugin = plugin;
         this.query = query;
         this.batchSize = batchSize;
-
-        if (poolSize == 1) {
-            this.statement = statement;
-        }
+        this.statement = statement;
     }
 
     /**
@@ -54,7 +51,6 @@ public class WriterCallableFactory {
      * @return an implementation of WriterCallable, chosen based on parameters that were set for this factory
      */
     public WriterCallable get() {
-
         if (batchSize > 1) {
             return new BatchWriterCallable(plugin, query, statement, batchSize);
         }

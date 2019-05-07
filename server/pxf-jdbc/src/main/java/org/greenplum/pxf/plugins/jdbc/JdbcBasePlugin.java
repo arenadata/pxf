@@ -48,7 +48,7 @@ public class JdbcBasePlugin extends BasePlugin {
 
     // '100' is a recommended value: https://docs.oracle.com/cd/E11882_01/java.112/e16548/oraperf.htm#JJDBC28754
     private static final int DEFAULT_BATCH_SIZE = 100;
-    private static final int DEFAULT_POOL_SIZE = 1;
+    private static final int DEFAULT_POOL_SIZE = 0;
 
     // configuration parameter names
     private static final String JDBC_DRIVER_PROPERTY_NAME = "jdbc.driver";
@@ -341,7 +341,7 @@ public class JdbcBasePlugin extends BasePlugin {
         }
 
         DatabaseMetaData metadata = connection.getMetaData();
-        
+
         // Handle optional connection transaction isolation level
         if (transactionIsolation != TransactionIsolation.NOT_PROVIDED) {
             // user wants to set isolation level explicitly

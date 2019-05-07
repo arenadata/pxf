@@ -331,9 +331,9 @@ It is recommended to use [batching](#batching) together with thread pool. Then e
 If any of the threads from pool fails, the user will get the error message. However, if INSERT fails, some data still may be INSERTed into the external database.
 
 To enable thread pool, create an external table with the paramete `POOL_SIZE` set to:
-* `integer < 1`. The number of threads in a pool is set equal to the number of CPUs in the system;
-* `integer > 1`. Thread pool will consist of the given number of threads;
-* `1`. Thread pool is disabled.
+* `integer < 0`. The number of threads in a pool is set equal to the number of CPUs in the system;
+* `integer > 0`. Thread pool consists of the given number of threads;
+* `0`. Thread pool is disabled.
 
 By default (`POOL_SIZE` is absent), thread pool is not used.
 

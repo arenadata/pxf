@@ -39,19 +39,9 @@ import java.sql.SQLException;
  */
 class BatchWriterCallable implements WriterCallable {
     @Override
-    public void supply(OneRow row) throws IllegalStateException {
-        if ((batchSize > 0) && (rows.size() >= batchSize)) {
-            throw new IllegalStateException("Trying to supply() a OneRow object to a full WriterCallable");
-        }
-        if (row == null) {
-            throw new IllegalArgumentException("Trying to supply() a null OneRow object");
-        }
+    public boolean supply(OneRow row) {
         rows.add(row);
-    }
-
-    @Override
-    public boolean isCallRequired() {
-        return (batchSize > 0) && (rows.size() >= batchSize);
+        return rows.size() >= batchSize;
     }
 
     @Override
@@ -60,27 +50,47 @@ class BatchWriterCallable implements WriterCallable {
             return null;
         }
 
+        long startTime = 0;
+        if (LOG.isDebugEnabled()) {
+            startTime = System.nanoTime();
+        }
+
         boolean statementMustBeDeleted = false;
         if (statement == null) {
             statement = plugin.getPreparedStatement(plugin.getConnection(), query);
+            if (LOG.isDebugEnabled()) {
+                double elapsedTime = (System.nanoTime() - startTime) / 1000000.0;
+                LOG.debug("Time to create connection and statement for batch: {}ms", elapsedTime);
+                startTime = System.nanoTime();
+            }
             statementMustBeDeleted = true;
         }
 
+        long dortpsStart;
+        long dortpsCurrent;
+        long dortpsTotal = 0;
+        long dortpsMin = Long.MAX_VALUE;
+        long dortpsMax = 0;
         for (OneRow row : rows) {
+            dortpsStart = System.nanoTime();
             JdbcResolver.decodeOneRowToPreparedStatement(row, statement);
+            dortpsCurrent = System.nanoTime() - dortpsStart;
+            dortpsTotal += dortpsCurrent;
+            dortpsMin = dortpsMin < dortpsCurrent ? dortpsMin : dortpsCurrent;
+            dortpsMax = dortpsMax > dortpsCurrent ? dortpsMax : dortpsCurrent;
             statement.addBatch();
         }
 
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("DORTPS Total: {}ms", dortpsTotal / 1000000.0);
+            LOG.debug("DORTPS Min: {}ms", dortpsMin / 1000000.0);
+            LOG.debug("DORTPS Max: {}ms", dortpsMax / 1000000.0);
+            LOG.debug("DORTPS Avg: {}ms", dortpsTotal / (1000000.0 * rows.size()));
+            LOG.debug("DORTPS row count: {}", rows.size());
+        }
+
         try {
-            if (LOG.isDebugEnabled()) {
-                long startTime = System.nanoTime();
-                statement.executeBatch();
-                double elapsedTime = (System.nanoTime() - startTime) / 1000000.0;
-                LOG.debug("Batch execution time: {}ms", elapsedTime);
-            }
-            else {
-                statement.executeBatch();
-            }
+            statement.executeBatch();
         }
         catch (BatchUpdateException bue) {
             SQLException cause = bue.getNextException();
@@ -94,6 +104,10 @@ class BatchWriterCallable implements WriterCallable {
             if (statementMustBeDeleted) {
                 JdbcBasePlugin.closeStatementAndConnection(statement);
                 statement = null;
+            }
+            if (LOG.isDebugEnabled()) {
+                double elapsedTime = (System.nanoTime() - startTime) / 1000000.0;
+                LOG.debug("Time to fill and execute batch: {}ms", elapsedTime);
             }
         }
 

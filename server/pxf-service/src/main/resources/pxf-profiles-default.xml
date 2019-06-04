@@ -208,6 +208,19 @@ under the License.
         </optionMappings>
     </profile>
     <profile>
+        <name>Tkh</name>
+        <description>Clickhouse</description>
+        <plugins>
+            <accessor>org.greenplum.pxf.plugins.tkh.TkhAccessor</accessor>
+            <resolver>org.greenplum.pxf.plugins.tkh.TkhResolver</resolver>
+        </plugins>
+        <optionMappings>
+            <mapping option="url" property="clickhouse.url"/>
+            <mapping option="batch" property="clickhouse.batch"/>
+            <mapping option="timeout" property="clickhouse.timeout"/>
+        </optionMappings>
+    </profile>
+    <profile>
         <name>Parquet</name>
         <description>A profile for reading and writing Parquet data from HDFS</description>
         <plugins>

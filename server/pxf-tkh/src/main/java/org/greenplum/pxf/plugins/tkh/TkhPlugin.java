@@ -27,7 +27,7 @@ public class TkhPlugin extends BasePlugin {
     // Write batch size
     protected int batchSize;
     protected boolean batchSizeIsSetByUser = false;
-    protected int BATCH_SIZE_DEFAULT = 1000;
+    protected int BATCH_SIZE_DEFAULT = 400000;
 
     // Query timeout.
     protected Integer queryTimeout;

@@ -1,6 +1,7 @@
 package org.greenplum.pxf.plugins.tkh;
 
 import org.apache.http.HttpResponse;
+import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -10,9 +11,9 @@ import org.greenplum.pxf.api.model.Accessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.sql.SQLException;
@@ -36,8 +37,7 @@ public class TkhAccessor extends TkhPlugin implements Accessor {
 
     private String query;
 
-    private PipedInputStream pis;
-    private PipedOutputStream pos;
+    private ByteArrayOutputStream buffer;
 
     /**
      * openForWrite() implementation
@@ -47,17 +47,19 @@ public class TkhAccessor extends TkhPlugin implements Accessor {
      */
     @Override
     public boolean openForWrite() throws UnsupportedEncodingException, IOException {
+        LOG.debug("openForWrite() called");
+
         query = buildQuery();
         String requestUrl = buildUrl(host, query);
 
         httpclient = HttpClients.createDefault();
         request = new HttpPost(requestUrl);
 
-        pis = new PipedInputStream();
-        pos = new PipedOutputStream(pis);
+        LOG.debug("openForWrite() httpclient & request created");
 
-        request.setEntity(new InputStreamEntity(pis));
+        buffer = new ByteArrayOutputStream();
 
+        LOG.debug("openForWrite() successful");
         return true;
     }
 
@@ -79,9 +81,14 @@ public class TkhAccessor extends TkhPlugin implements Accessor {
      */
     @Override
     public boolean writeNextObject(OneRow row) throws Exception {
-        assert httpclient != null && pos != null;
+        assert buffer != null;
 
-        pos.write(byte[].class.cast(row.getData()));
+        LOG.debug("writing to buffer ...");
+        buffer.write((byte[])row.getData());
+
+        if (buffer.size() >= batchSize) {
+            send();
+        }
 
         return true;
     }
@@ -93,15 +100,30 @@ public class TkhAccessor extends TkhPlugin implements Accessor {
      */
     @Override
     public void closeForWrite() throws Exception {
-        if (httpclient == null || pos == null) {
+        if (buffer == null || httpclient == null || request == null) {
             return;
         }
 
-        HttpResponse response = httpclient.execute(request);
-
-        LOG.info(response.toString());
+        send();
     }
 
+    /**
+     * Send buffer to ClickHouse and restart the stream
+     */
+    private void send() throws IOException, ClientProtocolException {
+        assert buffer != null && httpclient != null && request != null;
+
+        ByteArrayInputStream bais = new ByteArrayInputStream(buffer.toByteArray());
+        request.setEntity(new InputStreamEntity(bais));
+
+        LOG.debug("Executing request to Clickhouse");
+
+        HttpResponse response = httpclient.execute(request);
+
+        LOG.debug("Clickhouse HttpResponse: {}", response.toString());
+
+        buffer.reset();
+    }
 
     /**
      * Build a SQL INSERT query for Clickhouse

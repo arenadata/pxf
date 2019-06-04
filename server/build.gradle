@@ -231,6 +231,12 @@ project('pxf-jdbc') {
     }
 }
 
+project('pxf-tkh') {
+    dependencies {
+        compile(project(':pxf-api'))
+    }
+}
+
 project('pxf-json') {
     dependencies {
         compile(project(':pxf-hdfs'))

@@ -43,7 +43,7 @@ public class TkhPlugin extends BasePlugin {
         assertMandatoryParameter(host, CH_URL_CONFIGURATION, CH_URL_OPTION);
 
         // Required metadata
-        String tableName = context.getDataSource();
+        tableName = context.getDataSource();
         if (StringUtils.isBlank(tableName)) {
             throw new IllegalArgumentException("Data source must be provided");
         }

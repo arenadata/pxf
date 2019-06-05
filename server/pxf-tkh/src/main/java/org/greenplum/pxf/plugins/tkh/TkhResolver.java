@@ -64,15 +64,19 @@ public class TkhResolver extends TkhPlugin implements Resolver {
      */
     @Override
     public OneRow setFields(List<OneField> record) throws IOException {
+        int i = 0;
         for (OneField oneField : record) {
+            i += 1;
             baos.write(oneField.val.toString().getBytes(StandardCharsets.UTF_8));
-            baos.write('\t');
+            if (i != record.size()) {
+                baos.write('\t');
+            }
         }
         baos.write('\n');
 
-        byte[] result = baos.toByteArray();
+        OneRow result = new OneRow(baos.toByteArray());
         baos.reset();
 
-        return new OneRow(result);
+        return result;
     }
 }

@@ -38,6 +38,7 @@ public class TkhAccessor extends TkhPlugin implements Accessor {
     private String query;
 
     private ByteArrayOutputStream buffer;
+    private int bufferTupleSize;
 
     /**
      * openForWrite() implementation
@@ -58,6 +59,7 @@ public class TkhAccessor extends TkhPlugin implements Accessor {
         LOG.debug("openForWrite() httpclient & request created");
 
         buffer = new ByteArrayOutputStream();
+        bufferTupleSize = 0;
 
         LOG.debug("openForWrite() successful");
         return true;
@@ -85,9 +87,11 @@ public class TkhAccessor extends TkhPlugin implements Accessor {
 
         LOG.debug("writing to buffer ...");
         buffer.write((byte[])row.getData());
+        bufferTupleSize += 1;
 
-        if (buffer.size() >= batchSize) {
+        if (bufferTupleSize >= batchSize) {
             send();
+            bufferTupleSize = 0;
         }
 
         return true;
@@ -100,6 +104,7 @@ public class TkhAccessor extends TkhPlugin implements Accessor {
      */
     @Override
     public void closeForWrite() throws Exception {
+        LOG.debug("closeForWrite");
         if (buffer == null || httpclient == null || request == null) {
             return;
         }
@@ -112,6 +117,10 @@ public class TkhAccessor extends TkhPlugin implements Accessor {
      */
     private void send() throws IOException, ClientProtocolException {
         assert buffer != null && httpclient != null && request != null;
+
+        if (buffer.size() == 0) {
+            return;
+        }
 
         ByteArrayInputStream bais = new ByteArrayInputStream(buffer.toByteArray());
         request.setEntity(new InputStreamEntity(bais));
@@ -138,7 +147,7 @@ public class TkhAccessor extends TkhPlugin implements Accessor {
         ).append(
             tableName
         ).append(
-            "FORMAT TabSeparated"
+            " FORMAT TabSeparated"
         );
 
         return sb.toString();

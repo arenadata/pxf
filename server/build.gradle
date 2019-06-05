@@ -234,6 +234,8 @@ project('pxf-jdbc') {
 project('pxf-tkh') {
     dependencies {
         compile(project(':pxf-api'))
+
+        compile "org.apache.httpcomponents:httpasyncclient:4.1.4"
     }
 }
 

@@ -3,11 +3,8 @@ package org.greenplum.pxf.plugins.tkh;
 import org.apache.commons.lang.StringUtils;
 import org.greenplum.pxf.api.model.BasePlugin;
 import org.greenplum.pxf.api.model.RequestContext;
-import org.greenplum.pxf.api.utilities.ColumnDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
 
 /**
  * Clickhouse plugin base. Responsible for settings parsing
@@ -22,15 +19,12 @@ public class TkhPlugin extends BasePlugin {
 
     protected String host;
     protected String tableName;
-    protected List<ColumnDescriptor> columns = null;
 
-    // Write batch size
-    protected int batchSize;
-    protected boolean batchSizeIsSetByUser = false;
-    protected int BATCH_SIZE_DEFAULT = 400000;
+    protected int batchSize = BATCH_SIZE_DEFAULT;
+    protected static final int BATCH_SIZE_DEFAULT = 49152;
 
-    // Query timeout.
-    protected Integer queryTimeout;
+    protected Integer networkTimeout = NETWORK_TIMEOUT_DEFAULT;
+    protected static final int NETWORK_TIMEOUT_DEFAULT = 10000;
 
     private static final Logger LOG = LoggerFactory.getLogger(TkhPlugin.class);
 
@@ -48,11 +42,7 @@ public class TkhPlugin extends BasePlugin {
             throw new IllegalArgumentException("Data source must be provided");
         }
 
-        // Required metadata
-        columns = context.getTupleDescription();
-
         // Optional parameters
-        batchSizeIsSetByUser = configuration.get(CH_BATCH_CONFIGURATION) != null;
         batchSize = configuration.getInt(CH_BATCH_CONFIGURATION, BATCH_SIZE_DEFAULT);
 
         if (batchSize == 0) {
@@ -65,7 +55,7 @@ public class TkhPlugin extends BasePlugin {
         String queryTimeoutString = configuration.get(CH_TIMEOUT_CONFIGURATION);
         if (StringUtils.isNotBlank(queryTimeoutString)) {
             try {
-                queryTimeout = Integer.parseUnsignedInt(queryTimeoutString);
+                networkTimeout = Integer.parseUnsignedInt(queryTimeoutString);
             } catch (NumberFormatException e) {
                 throw new IllegalArgumentException(String.format(
                         "Property %s has incorrect value %s : must be a non-negative integer",

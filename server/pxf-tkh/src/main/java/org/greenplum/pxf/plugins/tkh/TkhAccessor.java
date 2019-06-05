@@ -1,17 +1,19 @@
 package org.greenplum.pxf.plugins.tkh;
 
 import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
 import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.InputStreamEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
+import org.apache.http.entity.ByteArrayEntity;
+import org.apache.http.entity.ContentType;
+import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.impl.nio.client.HttpAsyncClients;
 import org.greenplum.pxf.api.OneRow;
 import org.greenplum.pxf.api.model.Accessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -19,26 +21,29 @@ import java.net.URLEncoder;
 import java.sql.SQLException;
 import java.sql.SQLTimeoutException;
 import java.text.ParseException;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.Future;
 
 /**
- * JDBC tables accessor
- *
- * The SELECT queries are processed by {@link java.sql.Statement}
- *
- * The INSERT queries are processed by {@link java.sql.PreparedStatement} and
- * built-in JDBC batches of arbitrary size
+ * Tkh accessor
  */
 public class TkhAccessor extends TkhPlugin implements Accessor {
-
     private static final Logger LOG = LoggerFactory.getLogger(TkhAccessor.class);
 
-    private CloseableHttpClient httpclient;
-    private HttpPost request;
+    private CloseableHttpAsyncClient asyncHttpClient;
+    private List<Future<HttpResponse>> httpResponseFutures = new LinkedList<>();
+
+    private RequestConfig requestConfig;
+    private String requestURL;
 
     private String query;
 
     private ByteArrayOutputStream buffer;
     private int bufferTupleSize;
+
+    private static final int RESPONSE_CONTENT_MAX_LENGTH = 131072;
+    private byte[] responseContent = new byte[RESPONSE_CONTENT_MAX_LENGTH];
 
     /**
      * openForWrite() implementation
@@ -51,17 +56,22 @@ public class TkhAccessor extends TkhPlugin implements Accessor {
         LOG.debug("openForWrite() called");
 
         query = buildQuery();
-        String requestUrl = buildUrl(host, query);
+        requestURL = buildRequestURL(host, query);
 
-        httpclient = HttpClients.createDefault();
-        request = new HttpPost(requestUrl);
+        asyncHttpClient = HttpAsyncClients.createDefault();
+        asyncHttpClient.start();
 
-        LOG.debug("openForWrite() httpclient & request created");
+        requestConfig = RequestConfig.custom()
+            .setSocketTimeout(networkTimeout)
+            .setConnectTimeout(networkTimeout)
+            .setConnectionRequestTimeout(networkTimeout)
+            .build();
 
         buffer = new ByteArrayOutputStream();
         bufferTupleSize = 0;
 
         LOG.debug("openForWrite() successful");
+
         return true;
     }
 
@@ -85,13 +95,12 @@ public class TkhAccessor extends TkhPlugin implements Accessor {
     public boolean writeNextObject(OneRow row) throws Exception {
         assert buffer != null;
 
-        LOG.debug("writing to buffer ...");
         buffer.write((byte[])row.getData());
         bufferTupleSize += 1;
 
         if (bufferTupleSize >= batchSize) {
+            LOG.debug("Sending {} tuples from writeNextObject()", bufferTupleSize);
             send();
-            bufferTupleSize = 0;
         }
 
         return true;
@@ -104,34 +113,85 @@ public class TkhAccessor extends TkhPlugin implements Accessor {
      */
     @Override
     public void closeForWrite() throws Exception {
-        LOG.debug("closeForWrite");
-        if (buffer == null || httpclient == null || request == null) {
-            return;
+        Exception exceptionToThrow = null;
+
+        if (buffer != null) {
+            try {
+                if (buffer.size() > 0) {
+                    LOG.debug("Sending {} tuples from closeForWrite()", bufferTupleSize);
+                    send();
+                    LOG.debug("Done, without exceptions");
+                }
+            }
+            catch (Exception e) {
+                exceptionToThrow = exceptionToThrow == null ? e : exceptionToThrow;
+            }
         }
 
-        send();
+        if (httpResponseFutures != null) {
+            LOG.debug("Collecting and analyzing responses from ClickHouse...");
+            for (Future<HttpResponse> httpResponseFuture : httpResponseFutures) {
+                try {
+                    HttpResponse httpResponse = httpResponseFuture.get();
+
+                    StatusLine responseStatusLine = httpResponse.getStatusLine();
+                    if (responseStatusLine.getStatusCode() != 200 || LOG.isDebugEnabled()) {
+                        httpResponse.getEntity().getContent().read(responseContent);
+                        LOG.warn("Clickhouse response content:\n{}\n", new String(responseContent));
+
+                        String unusualResponseMessage = String.format(
+                            "Clickhouse responded with code %s: %s",
+                            responseStatusLine.getStatusCode(), responseStatusLine.getReasonPhrase()
+                        );
+                        if (responseStatusLine.getStatusCode() >= 400 && responseStatusLine.getStatusCode() < 600) {
+                            throw new RuntimeException(unusualResponseMessage);
+                        }
+                        else {
+                            LOG.warn(unusualResponseMessage);
+                        }
+                    }
+                }
+                catch (Exception e) {
+                    exceptionToThrow = exceptionToThrow == null ? e : exceptionToThrow;
+                }
+            }
+            LOG.debug("Done");
+        }
+
+        if (asyncHttpClient != null) {
+            LOG.debug("Closing HTTP client...");
+            try {
+                asyncHttpClient.close();
+            }
+            catch (Exception e) {
+                exceptionToThrow = exceptionToThrow == null ? e : exceptionToThrow;
+            }
+            LOG.debug("Done");
+        }
+
+        if (exceptionToThrow != null) {
+            throw exceptionToThrow;
+        }
     }
 
     /**
      * Send buffer to ClickHouse and restart the stream
      */
     private void send() throws IOException, ClientProtocolException {
-        assert buffer != null && httpclient != null && request != null;
+        assert buffer != null && asyncHttpClient != null;
 
         if (buffer.size() == 0) {
             return;
         }
 
-        ByteArrayInputStream bais = new ByteArrayInputStream(buffer.toByteArray());
-        request.setEntity(new InputStreamEntity(bais));
+        HttpPost request = new HttpPost(requestURL);
+        request.setConfig(requestConfig);
+        request.setEntity(new ByteArrayEntity(buffer.toByteArray(), ContentType.APPLICATION_OCTET_STREAM));
 
-        LOG.debug("Executing request to Clickhouse");
-
-        HttpResponse response = httpclient.execute(request);
-
-        LOG.debug("Clickhouse HttpResponse: {}", response.toString());
+        httpResponseFutures.add(asyncHttpClient.execute(request, null));
 
         buffer.reset();
+        bufferTupleSize = 0;
     }
 
     /**
@@ -162,7 +222,7 @@ public class TkhAccessor extends TkhPlugin implements Accessor {
      *
      * @throws UnsupportedEncodingException in case URLEncoder fails
      */
-    private String buildUrl(String hoststring, String query) throws UnsupportedEncodingException {
+    private String buildRequestURL(String hoststring, String query) throws UnsupportedEncodingException {
         StringBuilder sb = new StringBuilder();
 
         sb.append(

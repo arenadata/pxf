@@ -3,21 +3,17 @@ package org.greenplum.pxf.plugins.tkh;
 import org.apache.commons.lang.StringUtils;
 import org.greenplum.pxf.api.model.BasePlugin;
 import org.greenplum.pxf.api.model.RequestContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.greenplum.pxf.plugins.tkh.distribution.*;
 
 /**
  * Clickhouse plugin base. Responsible for settings parsing
  */
 public class TkhPlugin extends BasePlugin {
+    private static final String CH_DISTRIBUTION_TYPE_CONFIGURATION = "clickhouse.distribution";
     private static final String CH_URL_CONFIGURATION = "clickhouse.url";
-    private static final String CH_URL_OPTION = "URL";
-
     private static final String CH_BATCH_CONFIGURATION = "clickhouse.batch";
-
     private static final String CH_TIMEOUT_CONFIGURATION = "clickhouse.timeout";
 
-    protected String host;
     protected String tableName;
 
     protected int batchSize = BATCH_SIZE_DEFAULT;
@@ -26,25 +22,23 @@ public class TkhPlugin extends BasePlugin {
     protected Integer networkTimeout = NETWORK_TIMEOUT_DEFAULT;
     protected static final int NETWORK_TIMEOUT_DEFAULT = 10000;
 
-    private static final Logger LOG = LoggerFactory.getLogger(TkhPlugin.class);
+    protected DistributionManager distributionManager;
 
     @Override
     public void initialize(RequestContext context) {
         super.initialize(context);
 
-        // Required parameter. Can be auto-overwritten by user options
-        host = configuration.get(CH_URL_CONFIGURATION);
-        assertMandatoryParameter(host, CH_URL_CONFIGURATION, CH_URL_OPTION);
+        // Set distribution manager
+        setDistributionManager();
 
-        // Required metadata
+        // Table name (required)
         tableName = context.getDataSource();
         if (StringUtils.isBlank(tableName)) {
-            throw new IllegalArgumentException("Data source must be provided");
+            throw new IllegalArgumentException("Table name must be provided");
         }
 
-        // Optional parameters
+        // Batch size (optional)
         batchSize = configuration.getInt(CH_BATCH_CONFIGURATION, BATCH_SIZE_DEFAULT);
-
         if (batchSize == 0) {
             batchSize = 1;
         } else if (batchSize < 0) {
@@ -52,6 +46,7 @@ public class TkhPlugin extends BasePlugin {
                     "Property %s has incorrect value %s : must be a non-negative integer", CH_BATCH_CONFIGURATION, batchSize));
         }
 
+        // Timeout (optional)
         String queryTimeoutString = configuration.get(CH_TIMEOUT_CONFIGURATION);
         if (StringUtils.isNotBlank(queryTimeoutString)) {
             try {
@@ -65,17 +60,28 @@ public class TkhPlugin extends BasePlugin {
     }
 
     /**
-     * Asserts whether a given parameter has non-empty value, throws IllegalArgumentException otherwise
-     *
-     * @param value      value to check
-     * @param paramName  parameter name
-     * @param optionName name of the option for a given parameter
+     * Set the distribution manager
      */
-    private void assertMandatoryParameter(String value, String paramName, String optionName) {
-        if (StringUtils.isBlank(value)) {
-            throw new IllegalArgumentException(String.format(
-                    "Required parameter %s is missing or empty in jdbc-site.xml and option %s is not specified in table definition.", paramName, optionName)
-            );
+    private void setDistributionManager() {
+        DistributionType dType;
+
+        String distributionTypeString = configuration.get(CH_DISTRIBUTION_TYPE_CONFIGURATION);
+        if (distributionTypeString != null) {
+            dType = DistributionType.valueOf(distributionTypeString);
         }
+        else {
+            dType = DistributionType.LIST;
+        }
+
+        switch (dType) {
+            case LIST:
+                String urlString = configuration.get(CH_URL_CONFIGURATION);
+                distributionManager = new SimpleDistributionManager(urlString);
+                break;
+            default:
+                throw new RuntimeException("Illegal distribution type");
+        }
+
+        distributionManager.chooseHost();
     }
 }

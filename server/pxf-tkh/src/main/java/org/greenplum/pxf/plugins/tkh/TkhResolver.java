@@ -22,8 +22,6 @@ package org.greenplum.pxf.plugins.tkh;
 import org.greenplum.pxf.api.OneField;
 import org.greenplum.pxf.api.OneRow;
 import org.greenplum.pxf.api.model.Resolver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -36,8 +34,6 @@ import java.util.List;
  * JDBC tables resolver
  */
 public class TkhResolver extends TkhPlugin implements Resolver {
-    private static final Logger LOG = LoggerFactory.getLogger(TkhResolver.class);
-
     private ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
     /**

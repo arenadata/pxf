@@ -215,6 +215,7 @@ under the License.
             <resolver>org.greenplum.pxf.plugins.tkh.TkhResolver</resolver>
         </plugins>
         <optionMappings>
+            <mapping option="distribution" property="clickhouse.distribution"/>
             <mapping option="url" property="clickhouse.url"/>
             <mapping option="batch" property="clickhouse.batch"/>
             <mapping option="timeout" property="clickhouse.timeout"/>

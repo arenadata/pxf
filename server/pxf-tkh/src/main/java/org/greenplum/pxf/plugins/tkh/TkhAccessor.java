@@ -56,7 +56,7 @@ public class TkhAccessor extends TkhPlugin implements Accessor {
         LOG.debug("openForWrite() called");
 
         query = buildQuery();
-        requestURL = buildRequestURL(host, query);
+        requestURL = buildRequestURL(distributionManager.getHost(), query);
 
         asyncHttpClient = HttpAsyncClients.createDefault();
         asyncHttpClient.start();

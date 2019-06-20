@@ -235,6 +235,7 @@ project('pxf-tkh') {
     dependencies {
         compile(project(':pxf-api'))
 
+        compile "org.apache.httpcomponents:httpcore-nio:4.4.11"
         compile "org.apache.httpcomponents:httpasyncclient:4.1.4"
     }
 }

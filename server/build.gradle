@@ -79,6 +79,7 @@ allprojects {
             force "org.apache.zookeeper:zookeeper:3.4.6"
             force "junit:junit:${junitVersion}"
             force "com.google.guava:guava:19.0"
+            force "org.xerial.snappy:snappy-java:1.1.7.5"
         }
     }
 

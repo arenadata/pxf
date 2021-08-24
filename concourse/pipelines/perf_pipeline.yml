@@ -29,10 +29,10 @@ set_failed_gpdb_anchor: &set_failed
       config:
         platform: linux
         image_resource:
-          type: docker-image
+          type: registry-image
           source:
-            repository: pivotaldata/ccp
-            tag: "7"
+            repository: gcr.io/data-gpdb-public-images/ccp
+            tag: latest
         inputs:
         - name: ccp_src
         - name: terraform_gpdb
@@ -55,10 +55,10 @@ set_failed_gpdb_anchor: &set_failed
       config:
         platform: linux
         image_resource:
-          type: docker-image
+          type: registry-image
           source:
-            repository: pivotaldata/ccp
-            tag: "7"
+            repository: gcr.io/data-gpdb-public-images/ccp
+            tag: latest
         inputs:
         - name: ccp_src
         - name: terraform_dataproc
@@ -77,10 +77,12 @@ set_failed_gpdb_anchor: &set_failed
 
 resource_types:
 - name: terraform
-  type: docker-image
+  type: registry-image
   source:
-    repository: ljfranklin/terraform-resource
-    tag: 0.11.14
+    repository: gcr.io/data-gpdb-ud/terraform-resource
+    tag: 0.11.15
+    username: _json_key
+    password: ((pxf-cloudbuild-service-account-key))
 
 - name: gcs
   type: registry-image
@@ -124,8 +126,8 @@ resources:
   type: registry-image
   icon: docker
   source:
-    repository: pivotaldata/ccp
-    tag: 7
+    repository: gcr.io/data-gpdb-public-images/ccp
+    tag: latest
 
 - name: pxf_tarball
   type: gcs

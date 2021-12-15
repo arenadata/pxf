@@ -167,7 +167,7 @@ project('pxf-hbase') {
 project('pxf-hdfs') {
     dependencies {
         compile(project(':pxf-api'))
-        compile "org.apache.avro:avro-mapred:1.7.7"
+        compile "org.apache.avro:avro-mapred:1.9.2"
         compile "com.fasterxml.jackson.core:jackson-databind:2.11.0"
         compile "com.fasterxml.jackson.core:jackson-core:2.11.0"
         compile "com.fasterxml.jackson.core:jackson-annotations:2.11.0"
@@ -190,7 +190,7 @@ project('pxf-hdfs') {
         // for parquet tests
         testCompile "org.apache.parquet:parquet-pig:${parquetVersion}"
 
-        bundleJars "org.apache.avro:avro:1.7.7"
+        bundleJars "org.apache.avro:avro:1.9.2"
         // Dependency in hadoop 2.9.2
         bundleJars "com.fasterxml.woodstox:woodstox-core:5.0.3"
         bundleJars "org.codehaus.woodstox:stax2-api:3.1.4"

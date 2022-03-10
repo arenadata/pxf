@@ -79,6 +79,7 @@ public class SQLQueryBuilder {
     private final List<ColumnDescriptor> columns;
     private final String source;
     private String quoteString;
+    private boolean convertOracleDate = false;
     private boolean subQueryUsed = false;
 
     /**
@@ -122,6 +123,10 @@ public class SQLQueryBuilder {
         }
 
         quoteString = "";
+    }
+
+    public void setConvertOracleDate(boolean convertOracleDate) {
+        this.convertOracleDate = convertOracleDate;
     }
 
     /**
@@ -270,7 +275,8 @@ public class SQLQueryBuilder {
         return new JdbcPredicateBuilder(
                 dbProduct,
                 quoteString,
-                context.getTupleDescription());
+                context.getTupleDescription(),
+                convertOracleDate);
     }
 
     /**

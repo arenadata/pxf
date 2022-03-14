@@ -63,11 +63,12 @@ public enum DbProduct {
 
         @Override
         public String wrapDateWithTime(Object val) {
-            int index = String.valueOf(val).lastIndexOf('.');
+            String valStr = String.valueOf(val);
+            int index = valStr.lastIndexOf('.');
             if (index != -1) {
-                val = String.valueOf(val).substring(0, index);
+                valStr = valStr.substring(0, index);
             }
-            return "to_date('" + val + "', 'YYYY-MM-DD HH24:MI:SS')";
+            return "to_date('" + valStr + "', 'YYYY-MM-DD HH24:MI:SS')";
         }
 
         @Override

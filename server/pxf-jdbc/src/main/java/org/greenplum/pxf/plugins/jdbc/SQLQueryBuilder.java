@@ -79,7 +79,7 @@ public class SQLQueryBuilder {
     private final List<ColumnDescriptor> columns;
     private final String source;
     private String quoteString;
-    private boolean convertOracleDate = false;
+    private boolean wrapDateWithTime = false;
     private boolean subQueryUsed = false;
 
     /**
@@ -125,8 +125,8 @@ public class SQLQueryBuilder {
         quoteString = "";
     }
 
-    public void setConvertOracleDate(boolean convertOracleDate) {
-        this.convertOracleDate = convertOracleDate;
+    public void setWrapDateWithTime(boolean wrapDateWithTime) {
+        this.wrapDateWithTime = wrapDateWithTime;
     }
 
     /**
@@ -276,7 +276,7 @@ public class SQLQueryBuilder {
                 dbProduct,
                 quoteString,
                 context.getTupleDescription(),
-                convertOracleDate);
+                wrapDateWithTime);
     }
 
     /**

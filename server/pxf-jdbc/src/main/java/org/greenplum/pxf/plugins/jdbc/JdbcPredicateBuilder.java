@@ -39,7 +39,7 @@ import java.util.List;
 public class JdbcPredicateBuilder extends ColumnPredicateBuilder {
 
     private final DbProduct dbProduct;
-    private boolean convertOracleDate = false;
+    private boolean wrapDateWithTime = false;
 
     public JdbcPredicateBuilder(DbProduct dbProduct,
                                 List<ColumnDescriptor> tupleDescription) {
@@ -56,10 +56,10 @@ public class JdbcPredicateBuilder extends ColumnPredicateBuilder {
     public JdbcPredicateBuilder(DbProduct dbProduct,
                                 String quoteString,
                                 List<ColumnDescriptor> tupleDescription,
-                                boolean convertOracleDate) {
+                                boolean wrapDateWithTime) {
         super(quoteString, tupleDescription);
         this.dbProduct = dbProduct;
-        this.convertOracleDate = convertOracleDate;
+        this.wrapDateWithTime = wrapDateWithTime;
     }
 
     @Override
@@ -89,8 +89,8 @@ public class JdbcPredicateBuilder extends ColumnPredicateBuilder {
                 return dbProduct.wrapDate(value);
             case TIMESTAMP:
                 // Timestamp field has different format in different databases
-                // If convertOracleDate = true we have to convert to `date with time` for Oracle
-                if (convertOracleDate) {
+                // If wrapDateWithTime = true we have to convert timestamp to Oracle `date with time`
+                if (wrapDateWithTime) {
                     return dbProduct.wrapDateWithTime(value);
                 } else {
                     return dbProduct.wrapTimestamp(value);

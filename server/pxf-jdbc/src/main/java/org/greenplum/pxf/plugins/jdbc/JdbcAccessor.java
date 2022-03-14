@@ -112,8 +112,8 @@ public class JdbcAccessor extends JdbcBasePlugin implements Accessor {
             sqlQueryBuilder.forceSetQuoteString();
         }
 
-        if (convertOracleDate) {
-           sqlQueryBuilder.setConvertOracleDate(true);
+        if (wrapDateWithTime) {
+           sqlQueryBuilder.setWrapDateWithTime(true);
         }
 
         queryRead = sqlQueryBuilder.buildSelectQuery();

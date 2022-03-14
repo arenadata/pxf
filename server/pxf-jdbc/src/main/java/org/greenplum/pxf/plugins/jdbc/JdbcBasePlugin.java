@@ -135,7 +135,7 @@ public class JdbcBasePlugin extends BasePlugin {
     protected Integer queryTimeout;
 
     // Convert Postgres timestamp to Oracle date with time
-    protected Boolean convertOracleDate = false;
+    protected Boolean wrapDateWithTime = false;
 
     // Quote columns setting set by user (three values are possible)
     protected Boolean quoteColumns = null;
@@ -253,9 +253,9 @@ public class JdbcBasePlugin extends BasePlugin {
         }
 
         // Optional parameter. The default value is false
-        String convertOracleDateRaw = context.getOption("CONVERT_ORACLE_DATE");
-        if (convertOracleDateRaw != null) {
-            convertOracleDate = Boolean.parseBoolean(convertOracleDateRaw);
+        String wrapDateWithTimeRaw = context.getOption("CONVERT_ORACLE_DATE");
+        if (wrapDateWithTimeRaw != null) {
+            wrapDateWithTime = Boolean.parseBoolean(wrapDateWithTimeRaw);
         }
 
         // Optional parameter. The default value is null

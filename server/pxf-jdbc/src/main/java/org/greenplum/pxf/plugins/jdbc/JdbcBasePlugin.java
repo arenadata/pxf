@@ -135,7 +135,7 @@ public class JdbcBasePlugin extends BasePlugin {
     protected Integer queryTimeout;
 
     // Convert Postgres timestamp to Oracle date with time
-    protected Boolean wrapDateWithTime = false;
+    protected boolean wrapDateWithTime = false;
 
     // Quote columns setting set by user (three values are possible)
     protected Boolean quoteColumns = null;

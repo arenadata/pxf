@@ -136,7 +136,7 @@ The parameter is used for some specific cases when you need to convert Postgres 
     * `true` (case-insensitive) &mdash; convert Postgres `timestamp` type to Oracle `date` type  
     * any other value or `false` &mdash; Postgres `timestamp` type will be converted to Oracle `timestamp` type (default behaviour)
 
-If a field is `timestamp` type in the external GP table and `CONVERT_ORACLE_DATE=true` the fields that are used in the `where` filter will be cast to date and.
+If a field is `timestamp` type in the external GP table and `CONVERT_ORACLE_DATE=true` the fields that are used in the `where` filter will be cast to `date` type in Oracle.
 The milliseconds will be truncated. Example of the query where c3 field has `timestamp` type in the GP and `date` type in the Oracle:
 ```
 query in gp:              SELECT c1, c2, c3 FROM ext_oracle_datetime_fix WHERE c3 >= '2022-01-01 14:00:00.123456' and c3 < '2022-01-02 03:00:00.232323';
@@ -150,8 +150,8 @@ query in gp:              SELECT c1, c2, c3 FROM ext_oracle_datetime_fix where c
 recieved query in oracle: SELECT c1, c2, c3 FROM system.tst_pxf_datetime WHERE (c3 >= to_timestamp('2022-01-01 12:01:00', 'YYYY-MM-DD HH24:MI:SS.FF') AND c3 < to_timestamp('2022-01-02 02:01:00', 'YYYY-MM-DD HH24:MI:SS.FF'))
 ```
 
-Notes:
-The parameter `CONVERT_ORACLE_DATE` has impact only on the fields that are used in the `where` filter and does not apply for the other fields with timestamp type in the table.
+**Notes:**
+The parameter `CONVERT_ORACLE_DATE` has impact only on the fields that are used in the `where` filter and does not apply for the other fields with `timestamp` type in the table.
 
 
 #### Partition by

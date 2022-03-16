@@ -111,6 +111,11 @@ public class JdbcAccessor extends JdbcBasePlugin implements Accessor {
         else if (quoteColumns) {
             sqlQueryBuilder.forceSetQuoteString();
         }
+
+        if (wrapDateWithTime) {
+           sqlQueryBuilder.setWrapDateWithTime(true);
+        }
+
         queryRead = sqlQueryBuilder.buildSelectQuery();
         LOG.trace("Select query: {}", queryRead);
 

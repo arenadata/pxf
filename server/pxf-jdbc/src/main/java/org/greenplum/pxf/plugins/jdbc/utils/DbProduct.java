@@ -34,7 +34,7 @@ public enum DbProduct {
 
         @Override
         public String wrapDateWithTime(Object val) {
-            return wrapDate(val);
+            return wrapTimestamp(val);
         }
 
         @Override
@@ -51,7 +51,7 @@ public enum DbProduct {
 
         @Override
         public String wrapDateWithTime(Object val) {
-            return wrapDate(val);
+            return wrapTimestamp(val);
         }
     },
 
@@ -90,7 +90,7 @@ public enum DbProduct {
 
         @Override
         public String wrapDateWithTime(Object val) {
-            return wrapDate(val);
+            return wrapTimestamp(val);
         }
     },
 
@@ -102,7 +102,7 @@ public enum DbProduct {
 
         @Override
         public String wrapDateWithTime(Object val) {
-            return wrapDate(val);
+            return wrapTimestamp(val);
         }
 
         @Override
@@ -117,7 +117,7 @@ public enum DbProduct {
 
         @Override
         public String wrapDateWithTime(Object val) {
-            return wrapDate(val);
+            return wrapTimestamp(val);
         }
 
         @Override

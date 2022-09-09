@@ -489,6 +489,7 @@ churl_read(CHURL_HANDLE handle, char *buf, size_t max_size)
 	Assert(!context->upload);
 
 	fill_internal_buffer(context, max_size);
+	check_response(context);
 
 	n = context_buffer->top - context_buffer->bot;
 

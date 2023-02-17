@@ -240,14 +240,14 @@ function setup_gpadmin_user() {
 
 	# Don't create gpadmin user if already exists
 	if ! id -u gpadmin; then
-		groupadd -g 1000 gpadmin && useradd -u 1000 -g 1000 -M gpadmin
+		groupadd -g 1000 gpadmin && useradd -u 1000 -g 1000 gpadmin
 		echo "gpadmin  ALL=(ALL)	   NOPASSWD: ALL" > /etc/sudoers.d/gpadmin
 		groupadd supergroup && usermod -a -G supergroup gpadmin
 		mkdir -p ~gpadmin/.ssh
 		ssh-keygen -t rsa -N "" -f ~gpadmin/.ssh/id_rsa
 		cat /home/gpadmin/.ssh/id_rsa.pub >> ~gpadmin/.ssh/authorized_keys
 		chmod 0600 /home/gpadmin/.ssh/authorized_keys
-		{ ssh-keyscan localhost; ssh-keyscan 0.0.0.0; } >> ~gpadmin/.ssh/known_hosts
+		{ ssh-keyscan localhost; ssh-keyscan 0.0.0.0; ssh-keyscan $(hostname); } >> ~gpadmin/.ssh/known_hosts
 		chown -R gpadmin:gpadmin ${GPHOME} ~gpadmin/.ssh # don't chown cached dirs ~/.m2, etc.
 		echo -e "password\npassword" | passwd gpadmin 2> /dev/null
 	fi

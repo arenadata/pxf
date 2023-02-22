@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # This script depends on hub.adsw.io/library/gpdb6_pxf_regress
+set -exo pipefail
 
 # manually prepare gpadmin user; test_pxf.bash doesn't tweak gpadmin folder permissions and ssh keys
 ./gpdb_src/concourse/scripts/setup_gpadmin_user.bash

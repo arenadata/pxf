@@ -15,11 +15,12 @@ RUN rm /home/gpadmin/bin_gpdb/server-*.tar.gz && \
     mkdir /tmp/build && \
     ln -s /home/gpadmin/gpdb_src /tmp/build/gpdb_src && \
     ln -s /home/gpadmin/bin_gpdb /tmp/build/bin_gpdb
+# default working dir - the place where all sources and artifacts are placed
+WORKDIR /tmp/build
 
 # create separate image with files we don't want to keep in base image
 FROM base as build
 COPY . /tmp/build/pxf_src
-WORKDIR /tmp/build
 RUN source gpdb_src/concourse/scripts/common.bash && \
     install_gpdb && \
     source '/usr/local/greenplum-db-devel/greenplum_path.sh' && \

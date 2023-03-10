@@ -13,4 +13,4 @@ docker run --rm -it \
   --privileged --sysctl kernel.sem="500 1024000 200 4096" \
   gpdb6_pxf_regress:latest /tmp/build/pxf_src/arenadata/test_in_docker.sh
 ```
-FAKE LINE
+FAKE

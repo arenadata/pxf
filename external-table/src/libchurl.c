@@ -524,6 +524,14 @@ churl_cleanup(CHURL_HANDLE handle, bool after_error)
 	if (!context)
 		return;
 
+	/* unlink from linked list first */
+	if (context->prev)
+		context->prev->next = context->next;
+	else
+		open_curl_handles = open_curl_handles->next;
+	if (context->next)
+		context->next->prev = context->prev;
+
 	/* don't try to read/write data after an error */
 	if (!after_error)
 	{
@@ -790,17 +798,7 @@ static void
 churl_cleanup_context(churl_context *context)
 {
 	if (context)
-	{
-		/* unlink from linked list first */
-		if (context->prev)
-			context->prev->next = context->next;
-		else
-			open_curl_handles = open_curl_handles->next;
-		if (context->next)
-			context->next->prev = context->prev;
-
 		pfree(context);
-	}
 }
 
 /*

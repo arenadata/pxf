@@ -42,7 +42,7 @@ PxfBridgeCleanup(PxfFdwModifyState *pxfmstate)
 	if (pxfmstate == NULL)
 		return;
 
-	churl_cleanup(pxfmstate->churl_handle, false);
+	churl_cleanup(pxfmstate->churl_handle, pxfmstate->after_error);
 	pxfmstate->churl_handle = NULL;
 
 	churl_headers_cleanup(pxfmstate->churl_headers);
@@ -57,6 +57,36 @@ PxfBridgeCleanup(PxfFdwModifyState *pxfmstate)
 	{
 		pfree(pxfmstate->options);
 	}
+
+	pfree(pxfmstate);
+}
+
+/*
+ * Clean up churl related data structures from the PXF FDW scan state.
+ */
+void
+PxfBridgeScanCleanup(PxfFdwScanState *pxfsstate)
+{
+	if (pxfsstate == NULL)
+		return;
+
+	churl_cleanup(pxfsstate->churl_handle, pxfsstate->after_error);
+	pxfsstate->churl_handle = NULL;
+
+	churl_headers_cleanup(pxfsstate->churl_headers);
+	pxfsstate->churl_headers = NULL;
+
+	if (pxfsstate->uri.data)
+	{
+		pfree(pxfsstate->uri.data);
+	}
+
+	if (pxfsstate->options)
+	{
+		pfree(pxfsstate->options);
+	}
+
+	pfree(pxfsstate);
 }
 
 /*

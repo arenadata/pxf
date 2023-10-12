@@ -48,6 +48,11 @@ PG_MODULE_MAGIC;
 #define PXF_ERROR_TOKEN "PXFERRMSG> "
 #define PXF_ERROR_TOKEN_SIZE strlen(PXF_ERROR_TOKEN)
 
+static PxfFdwScanState *OpenPxfFdwScanStates;
+static bool PxfFdwScanStateResownerCallbackRegistered;
+static PxfFdwModifyState *OpenPxfFdwModifyStates;
+static bool PxfFdwModifyStateResownerCallbackRegistered;
+
 extern Datum pxf_fdw_handler(PG_FUNCTION_ARGS);
 
 /*
@@ -99,6 +104,7 @@ static int	pxfIsForeignRelUpdatable(Relation rel);
  */
 static PxfFdwModifyState *InitForeignModify(Relation relation);
 static void FinishForeignModify(PxfFdwModifyState *pxfmstate);
+static void FinishForeignScan(PxfFdwScanState *pxfsstate);
 static void InitCopyState(PxfFdwScanState *pxfsstate);
 static void InitCopyStateForModify(PxfFdwModifyState *pxfmstate);
 static CopyState BeginCopyTo(Relation forrel, List *options);
@@ -387,6 +393,36 @@ pxfExplainForeignScan(ForeignScanState *node, ExplainState *es)
 	elog(DEBUG5, "pxf_fdw: pxfExplainForeignScan ends on segment: %d", PXF_SEGMENT_ID);
 }
 
+static void
+PxfFdwScanStateAbortCallback(ResourceReleasePhase phase,
+						bool isCommit,
+						bool isTopLevel,
+						void *arg)
+{
+	elog(WARNING, "phase = %i, isCommit = %i, isTopLevel = %i", phase, isCommit, isTopLevel);
+	PxfFdwScanState *curr;
+	PxfFdwScanState *next;
+
+	if (phase != RESOURCE_RELEASE_AFTER_LOCKS)
+		return;
+
+	next = OpenPxfFdwScanStates;
+	while (next)
+	{
+		curr = next;
+		next = curr->next;
+
+		if (curr->owner == CurrentResourceOwner)
+		{
+			if (isCommit)
+				elog(LOG, "pxf-fdw reference leak: %p still referenced", curr);
+
+			curr->after_error = !isCommit;
+			FinishForeignScan(curr);
+		}
+	}
+}
+
 /*
  * BeginForeignScan
  *   called during executor startup. perform any initialization
@@ -412,7 +448,9 @@ pxfBeginForeignScan(ForeignScanState *node, int eflags)
 	PxfFdwScanState *pxfsstate    = NULL;
 	Relation	relation          = node->ss.ss_currentRelation;
 	ForeignScan *foreignScan      = (ForeignScan *) node->ss.ps.plan;
+	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	PxfOptions *options           = PxfGetOptions(foreigntableid);
+	MemoryContextSwitchTo(oldcontext);
 
 	/* retrieve fdw-private information from pxfGetForeignPlan() */
 	char *filter_str              = strVal(list_nth(foreignScan->fdw_private, FdwScanPrivateWhereClauses));
@@ -427,8 +465,27 @@ pxfBeginForeignScan(ForeignScanState *node, int eflags)
 	 * Save state in node->fdw_state.  We must save enough information to call
 	 * BeginCopyFrom() again.
 	 */
-	pxfsstate = (PxfFdwScanState *) palloc(sizeof(PxfFdwScanState));
+	oldcontext = MemoryContextSwitchTo(CurTransactionContext);
+	pxfsstate = (PxfFdwScanState *) palloc0(sizeof(PxfFdwScanState));
 	initStringInfo(&pxfsstate->uri);
+	MemoryContextSwitchTo(oldcontext);
+
+	pxfsstate->after_error = false;
+	pxfsstate->owner = CurrentResourceOwner;
+
+	if (OpenPxfFdwScanStates)
+	{
+		pxfsstate->next = OpenPxfFdwScanStates;
+		OpenPxfFdwScanStates->prev = pxfsstate;
+	}
+
+	OpenPxfFdwScanStates = pxfsstate;
+
+	if (!PxfFdwScanStateResownerCallbackRegistered)
+	{
+		RegisterResourceReleaseCallback(PxfFdwScanStateAbortCallback, NULL);
+		PxfFdwScanStateResownerCallbackRegistered = true;
+	}
 
 	pxfsstate->filter_str = filter_str;
 	pxfsstate->options = options;
@@ -555,7 +612,6 @@ pxfEndForeignScan(ForeignScanState *node)
 	elog(DEBUG5, "pxf_fdw: pxfEndForeignScan starts on segment: %d", PXF_SEGMENT_ID);
 
 	ForeignScan *foreignScan = (ForeignScan *) node->ss.ps.plan;
-	PxfFdwScanState *pxfsstate = (PxfFdwScanState *) node->fdw_state;
 
 	/* Release resources */
 	if (foreignScan->fdw_private)
@@ -564,11 +620,31 @@ pxfEndForeignScan(ForeignScanState *node)
 		pfree(foreignScan->fdw_private);
 	}
 
-	/* if pxfsstate is NULL, we are in EXPLAIN; nothing to do */
-	if (pxfsstate)
-		EndCopyFrom(pxfsstate->cstate);
+	FinishForeignScan(node->fdw_state);
 
 	elog(DEBUG5, "pxf_fdw: pxfEndForeignScan ends on segment: %d", PXF_SEGMENT_ID);
+}
+
+static void
+FinishForeignScan(PxfFdwScanState *pxfsstate)
+{
+	/* If pxfmstate is NULL, we are in EXPLAIN or MASTER when exec_location is all segments; nothing to do */
+	if (pxfsstate == NULL)
+		return;
+
+	/* unlink from linked list first */
+	if (pxfsstate->prev)
+		pxfsstate->prev->next = pxfsstate->next;
+	else
+		OpenPxfFdwScanStates = OpenPxfFdwScanStates->next;
+	if (pxfsstate->next)
+		pxfsstate->next->prev = pxfsstate->prev;
+
+	if (pxfsstate->cstate)
+		EndCopyFrom(pxfsstate->cstate);
+	pxfsstate->cstate = NULL;
+	PxfBridgeScanCleanup(pxfsstate);
+
 }
 
 /*
@@ -610,6 +686,36 @@ pxfBeginForeignModify(ModifyTableState *mtstate,
 	 */
 }
 
+static void
+PxfFdwModifyStateAbortCallback(ResourceReleasePhase phase,
+						bool isCommit,
+						bool isTopLevel,
+						void *arg)
+{
+	elog(WARNING, "phase = %i, isCommit = %i, isTopLevel = %i", phase, isCommit, isTopLevel);
+	PxfFdwModifyState *curr;
+	PxfFdwModifyState *next;
+
+	if (phase != RESOURCE_RELEASE_AFTER_LOCKS)
+		return;
+
+	next = OpenPxfFdwModifyStates;
+	while (next)
+	{
+		curr = next;
+		next = curr->next;
+
+		if (curr->owner == CurrentResourceOwner)
+		{
+			if (isCommit)
+				elog(LOG, "pxf-fdw reference leak: %p still referenced", curr);
+
+			curr->after_error = !isCommit;
+			FinishForeignModify(curr);
+		}
+	}
+}
+
 /*
  * InitForeignModify
  * 		Initialize various structures before actually performing insertion / modification
@@ -638,10 +744,31 @@ InitForeignModify(Relation relation)
 		return NULL;
 
 	tupDesc = RelationGetDescr(relation);
+	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	options = PxfGetOptions(foreigntableid);
-	pxfmstate = palloc(sizeof(PxfFdwModifyState));
+	pxfmstate = palloc0(sizeof(PxfFdwModifyState));
+	MemoryContextSwitchTo(oldcontext);
 
+	pxfmstate->after_error = false;
+	pxfmstate->owner = CurrentResourceOwner;
+
+	if (OpenPxfFdwModifyStates)
+	{
+		pxfmstate->next = OpenPxfFdwModifyStates;
+		OpenPxfFdwModifyStates->prev = pxfmstate;
+	}
+
+	OpenPxfFdwModifyStates = pxfmstate;
+
+	if (!PxfFdwModifyStateResownerCallbackRegistered)
+	{
+		RegisterResourceReleaseCallback(PxfFdwModifyStateAbortCallback, NULL);
+		PxfFdwModifyStateResownerCallbackRegistered = true;
+	}
+
+	oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	initStringInfo(&pxfmstate->uri);
+	MemoryContextSwitchTo(oldcontext);
 	pxfmstate->relation = relation;
 	pxfmstate->options = options;
 #if PG_VERSION_NUM < 90600
@@ -754,7 +881,16 @@ FinishForeignModify(PxfFdwModifyState *pxfmstate)
 	if (pxfmstate == NULL)
 		return;
 
-	EndCopyFrom(pxfmstate->cstate);
+	/* unlink from linked list first */
+	if (pxfmstate->prev)
+		pxfmstate->prev->next = pxfmstate->next;
+	else
+		OpenPxfFdwModifyStates = OpenPxfFdwModifyStates->next;
+	if (pxfmstate->next)
+		pxfmstate->next->prev = pxfmstate->prev;
+
+	if (pxfmstate->cstate)
+		EndCopyFrom(pxfmstate->cstate);
 	pxfmstate->cstate = NULL;
 	PxfBridgeCleanup(pxfmstate);
 
@@ -783,7 +919,9 @@ InitCopyState(PxfFdwScanState *pxfsstate)
 {
 	CopyState	cstate;
 
+	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	PxfBridgeImportStart(pxfsstate);
+	MemoryContextSwitchTo(oldcontext);
 
 	/*
 	 * Create CopyState from FDW options.  We always acquire all columns, so
@@ -863,7 +1001,9 @@ InitCopyStateForModify(PxfFdwModifyState *pxfmstate)
 
 	copy_options = pxfmstate->options->copy_options;
 
+	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	PxfBridgeExportStart(pxfmstate);
+	MemoryContextSwitchTo(oldcontext);
 
 	/*
 	 * Create CopyState from FDW options.  We always acquire all columns to match the expected ScanTupleSlot signature.

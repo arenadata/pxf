@@ -531,6 +531,14 @@ churl_cleanup(CHURL_HANDLE handle, bool after_error)
 	if (!context)
 		return;
 
+	/* unlink from linked list first */
+	if (context->prev)
+		context->prev->next = context->next;
+	else
+		open_curl_handles = open_curl_handles->next;
+	if (context->next)
+		context->next->prev = context->prev;
+
 	/* don't try to read/write data after an error */
 	if (!after_error)
 	{
@@ -565,10 +573,32 @@ churl_abort_callback(ResourceReleasePhase phase,
 
 		if (curr->owner == CurrentResourceOwner)
 		{
+			volatile int	savedInterruptHoldoffCount;
+
 			if (isCommit)
 				elog(LOG, "pxf reference leak: %p still referenced", curr);
 
-			churl_cleanup(curr, !isCommit);
+			PG_TRY();
+			{
+				savedInterruptHoldoffCount = InterruptHoldoffCount;
+				churl_cleanup(curr, !isCommit);
+			}
+			PG_CATCH();
+			{
+				InterruptHoldoffCount = savedInterruptHoldoffCount;
+
+				if (elog_demote(WARNING))
+				{
+					EmitErrorReport();
+					FlushErrorState();
+				}
+				else
+				{
+					FlushErrorState();
+					elog(WARNING, "unable to demote error");
+				}
+			}
+			PG_END_TRY();
 		}
 	}
 }
@@ -798,17 +828,7 @@ static void
 churl_cleanup_context(churl_context *context)
 {
 	if (context)
-	{
-		/* unlink from linked list first */
-		if (context->prev)
-			context->prev->next = context->next;
-		else
-			open_curl_handles = open_curl_handles->next;
-		if (context->next)
-			context->next->prev = context->prev;
-
 		pfree(context);
-	}
 }
 
 /*

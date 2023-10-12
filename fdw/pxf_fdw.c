@@ -399,7 +399,6 @@ PxfFdwScanStateAbortCallback(ResourceReleasePhase phase,
 						bool isTopLevel,
 						void *arg)
 {
-	elog(WARNING, "phase = %i, isCommit = %i, isTopLevel = %i", phase, isCommit, isTopLevel);
 	PxfFdwScanState *curr;
 	PxfFdwScanState *next;
 
@@ -692,7 +691,6 @@ PxfFdwModifyStateAbortCallback(ResourceReleasePhase phase,
 						bool isTopLevel,
 						void *arg)
 {
-	elog(WARNING, "phase = %i, isCommit = %i, isTopLevel = %i", phase, isCommit, isTopLevel);
 	PxfFdwModifyState *curr;
 	PxfFdwModifyState *next;
 

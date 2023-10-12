@@ -163,7 +163,6 @@ gphadoop_context_abort_callback(ResourceReleasePhase phase,
 						bool isTopLevel,
 						void *arg)
 {
-	elog(WARNING, "phase = %i, isCommit = %i, isTopLevel = %i", phase, isCommit, isTopLevel);
 	gphadoop_context *curr;
 	gphadoop_context *next;
 

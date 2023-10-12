@@ -32,7 +32,7 @@
 /*
  * Context for single query execution by PXF bridge
  */
-typedef struct
+typedef struct gphadoop_context
 {
 	CHURL_HEADERS  churl_headers;
 	CHURL_HANDLE   churl_handle;
@@ -43,6 +43,10 @@ typedef struct
 	ProjectionInfo *proj_info;
 	List           *quals;
 	bool           completed;
+	bool           after_error;
+	ResourceOwner  owner;
+	struct gphadoop_context *next;
+	struct gphadoop_context *prev;
 } gphadoop_context;
 
 /*

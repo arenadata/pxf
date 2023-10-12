@@ -32,6 +32,9 @@
 PG_MODULE_MAGIC;
 #endif
 
+static gphadoop_context *open_gphadoop_contexts;
+static bool gphadoop_context_resowner_callback_registered;
+
 PG_FUNCTION_INFO_V1(pxfprotocol_export);
 PG_FUNCTION_INFO_V1(pxfprotocol_import);
 PG_FUNCTION_INFO_V1(pxfprotocol_validate_urls);
@@ -154,6 +157,36 @@ pxfprotocol_import(PG_FUNCTION_ARGS)
 	PG_RETURN_INT32(bytes_read);
 }
 
+static void
+gphadoop_context_abort_callback(ResourceReleasePhase phase,
+						bool isCommit,
+						bool isTopLevel,
+						void *arg)
+{
+	elog(WARNING, "phase = %i, isCommit = %i, isTopLevel = %i", phase, isCommit, isTopLevel);
+	gphadoop_context *curr;
+	gphadoop_context *next;
+
+	if (phase != RESOURCE_RELEASE_AFTER_LOCKS)
+		return;
+
+	next = open_gphadoop_contexts;
+	while (next)
+	{
+		curr = next;
+		next = curr->next;
+
+		if (curr->owner == CurrentResourceOwner)
+		{
+			if (isCommit)
+				elog(LOG, "pxf reference leak: %p still referenced", curr);
+
+			curr->after_error = !isCommit;
+			cleanup_context(curr);
+		}
+	}
+}
+
 /*
  * Allocates context and sets values for the segment
  */
@@ -183,6 +216,23 @@ create_context(PG_FUNCTION_ARGS, bool is_import)
 	/* set context */
 	gphadoop_context *context = palloc0(sizeof(gphadoop_context));
 
+	context->after_error = false;
+	context->owner = CurrentResourceOwner;
+
+	if (open_gphadoop_contexts)
+	{
+		context->next = open_gphadoop_contexts;
+		open_gphadoop_contexts->prev = context;
+	}
+
+	open_gphadoop_contexts = context;
+
+	if (!gphadoop_context_resowner_callback_registered)
+	{
+		RegisterResourceReleaseCallback(gphadoop_context_abort_callback, NULL);
+		gphadoop_context_resowner_callback_registered = true;
+	}
+
 	context->gphd_uri = uri;
 	initStringInfo(&context->uri);
 	context->relation  = relation;
@@ -201,6 +251,14 @@ cleanup_context(gphadoop_context *context)
 {
 	if (context != NULL)
 	{
+		/* unlink from linked list first */
+		if (context->prev)
+			context->prev->next = context->next;
+		else
+			open_gphadoop_contexts = open_gphadoop_contexts->next;
+		if (context->next)
+			context->next->prev = context->prev;
+
 		gpbridge_cleanup(context);
 		pfree(context->uri.data);
 		pfree(context);

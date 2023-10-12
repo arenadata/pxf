@@ -608,6 +608,12 @@ pxfBeginForeignModify(ModifyTableState *mtstate,
 	 * external resource in the QD node, when all the actual insertions happen
 	 * in the segments.
 	 */
+
+	if (eflags & EXEC_FLAG_EXPLAIN_ONLY)
+		return;
+
+	if (!resultRelInfo->ri_FdwState)
+		resultRelInfo->ri_FdwState = InitForeignModify(resultRelInfo->ri_RelationDesc);
 }
 
 /*

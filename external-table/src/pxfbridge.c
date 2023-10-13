@@ -65,17 +65,34 @@ gpbridge_cleanup(gphadoop_context *context)
 	UnregisterResourceReleaseCallback(gpbridge_abort_callback, context);
 
 	churl_cleanup(context->churl_handle, context->after_error);
-	context->churl_handle = NULL;
 
 	if (context->after_error && !context->upload)
 	{
-		build_uri_for_cancel(context);
+		PG_TRY();
+		{
+			build_uri_for_cancel(context);
 
-		context->churl_handle = churl_init_upload(context->uri.data, context->churl_headers);
+			context->churl_handle = churl_init_upload(context->uri.data, context->churl_headers);
 
-		churl_cleanup(context->churl_handle, false);
-		context->churl_handle = NULL;
+			churl_cleanup(context->churl_handle, false);
+		}
+		PG_CATCH();
+		{
+			if (elog_demote(WARNING))
+			{
+				EmitErrorReport();
+				FlushErrorState();
+			}
+			else
+			{
+				FlushErrorState();
+				elog(WARNING, "unable to demote error");
+			}
+		}
+		PG_END_TRY();
 	}
+
+	context->churl_handle = NULL;
 
 	churl_headers_cleanup(context->churl_headers);
 	context->churl_headers = NULL;

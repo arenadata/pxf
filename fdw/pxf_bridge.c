@@ -116,17 +116,34 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 	UnregisterResourceReleaseCallback(PxfBridgeImportAbortCallback, pxfsstate);
 
 	churl_cleanup(pxfsstate->churl_handle, pxfsstate->after_error);
-	pxfsstate->churl_handle = NULL;
 
 	if (pxfsstate->after_error)
 	{
-		BuildUriForCancel(pxfsstate);
+		PG_TRY();
+		{
+			BuildUriForCancel(pxfsstate);
 
-		pxfsstate->churl_handle = churl_init_upload(pxfsstate->uri.data, pxfsstate->churl_headers);
+			pxfsstate->churl_handle = churl_init_upload(pxfsstate->uri.data, pxfsstate->churl_headers);
 
-		churl_cleanup(pxfsstate->churl_handle, false);
-		pxfsstate->churl_handle = NULL;
+			churl_cleanup(pxfsstate->churl_handle, false);
+		}
+		PG_CATCH();
+		{
+			if (elog_demote(WARNING))
+			{
+				EmitErrorReport();
+				FlushErrorState();
+			}
+			else
+			{
+				FlushErrorState();
+				elog(WARNING, "unable to demote error");
+			}
+		}
+		PG_END_TRY();
 	}
+
+	pxfsstate->churl_handle = NULL;
 
 	churl_headers_cleanup(pxfsstate->churl_headers);
 	pxfsstate->churl_headers = NULL;

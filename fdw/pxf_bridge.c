@@ -25,7 +25,6 @@
 #include "cdb/cdbvars.h"
 
 /* helper function declarations */
-static void PxfBridgeImportCancel(PxfFdwScanState *pxfsstate);
 static void BuildUriForCancel(PxfFdwScanState *pxfsstate);
 static void BuildUriForRead(PxfFdwScanState *pxfsstate);
 static void BuildUriForWrite(PxfFdwModifyState *pxfmstate);

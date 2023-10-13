@@ -414,6 +414,16 @@ churl_init_download(const char *url, CHURL_HEADERS headers)
 	context->upload = false;
 
 	setup_multi_handle(context);
+
+	int curl_error;
+	long local_port;
+
+	if (CURLE_OK != (curl_error = curl_easy_getinfo(context->curl_handle, CURLINFO_LOCAL_PORT, &local_port)))
+		elog(ERROR, "internal error: curl_easy_getinfo failed(%d - %s)",
+			curl_error, curl_easy_strerror(curl_error));
+
+	churl_headers_append(headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
+
 	return (CHURL_HANDLE) context;
 }
 

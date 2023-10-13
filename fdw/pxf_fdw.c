@@ -412,7 +412,7 @@ pxfBeginForeignScan(ForeignScanState *node, int eflags)
 	PxfFdwScanState *pxfsstate    = NULL;
 	Relation	relation          = node->ss.ss_currentRelation;
 	ForeignScan *foreignScan      = (ForeignScan *) node->ss.ps.plan;
-	PxfOptions *options           = PxfGetOptions(foreigntableid);
+	PxfOptions *options           = NULL;
 
 	/* retrieve fdw-private information from pxfGetForeignPlan() */
 	char *filter_str              = strVal(list_nth(foreignScan->fdw_private, FdwScanPrivateWhereClauses));
@@ -427,8 +427,11 @@ pxfBeginForeignScan(ForeignScanState *node, int eflags)
 	 * Save state in node->fdw_state.  We must save enough information to call
 	 * BeginCopyFrom() again.
 	 */
+	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
+	options = PxfGetOptions(foreigntableid);
 	pxfsstate = (PxfFdwScanState *) palloc(sizeof(PxfFdwScanState));
 	initStringInfo(&pxfsstate->uri);
+	MemoryContextSwitchTo(oldcontext);
 
 	pxfsstate->filter_str = filter_str;
 	pxfsstate->options = options;
@@ -568,6 +571,8 @@ pxfEndForeignScan(ForeignScanState *node)
 	if (pxfsstate)
 		EndCopyFrom(pxfsstate->cstate);
 
+	PxfBridgeImportCleanup(pxfsstate);
+
 	elog(DEBUG5, "pxf_fdw: pxfEndForeignScan ends on segment: %d", PXF_SEGMENT_ID);
 }
 
@@ -638,10 +643,12 @@ InitForeignModify(Relation relation)
 		return NULL;
 
 	tupDesc = RelationGetDescr(relation);
+	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	options = PxfGetOptions(foreigntableid);
 	pxfmstate = palloc(sizeof(PxfFdwModifyState));
 
 	initStringInfo(&pxfmstate->uri);
+	MemoryContextSwitchTo(oldcontext);
 	pxfmstate->relation = relation;
 	pxfmstate->options = options;
 #if PG_VERSION_NUM < 90600
@@ -783,7 +790,9 @@ InitCopyState(PxfFdwScanState *pxfsstate)
 {
 	CopyState	cstate;
 
+	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	PxfBridgeImportStart(pxfsstate);
+	MemoryContextSwitchTo(oldcontext);
 
 	/*
 	 * Create CopyState from FDW options.  We always acquire all columns, so
@@ -863,7 +872,9 @@ InitCopyStateForModify(PxfFdwModifyState *pxfmstate)
 
 	copy_options = pxfmstate->options->copy_options;
 
+	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	PxfBridgeExportStart(pxfmstate);
+	MemoryContextSwitchTo(oldcontext);
 
 	/*
 	 * Create CopyState from FDW options.  We always acquire all columns to match the expected ScanTupleSlot signature.

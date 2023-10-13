@@ -68,8 +68,12 @@ gpbridge_cleanup(gphadoop_context *context)
 
 	if (context->after_error && !context->upload)
 	{
+		volatile int savedInterruptHoldoffCount;
+
 		PG_TRY();
 		{
+			savedInterruptHoldoffCount = InterruptHoldoffCount;
+
 			build_uri_for_cancel(context);
 
 			context->churl_handle = churl_init_upload(context->uri.data, context->churl_headers);
@@ -78,6 +82,8 @@ gpbridge_cleanup(gphadoop_context *context)
 		}
 		PG_CATCH();
 		{
+			InterruptHoldoffCount = savedInterruptHoldoffCount;
+
 			if (elog_demote(WARNING))
 			{
 				EmitErrorReport();

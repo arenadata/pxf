@@ -119,8 +119,12 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 
 	if (pxfsstate->after_error)
 	{
+		volatile int savedInterruptHoldoffCount;
+
 		PG_TRY();
 		{
+			savedInterruptHoldoffCount = InterruptHoldoffCount;
+
 			BuildUriForCancel(pxfsstate);
 
 			pxfsstate->churl_handle = churl_init_upload(pxfsstate->uri.data, pxfsstate->churl_headers);
@@ -129,6 +133,8 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 		}
 		PG_CATCH();
 		{
+			InterruptHoldoffCount = savedInterruptHoldoffCount;
+
 			if (elog_demote(WARNING))
 			{
 				EmitErrorReport();

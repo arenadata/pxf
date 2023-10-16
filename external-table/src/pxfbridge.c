@@ -26,6 +26,7 @@
 #include "utils/guc.h"
 
 /* helper function declarations */
+static void gpbridge_cancel(gphadoop_context *context);
 static void build_uri_for_cancel(gphadoop_context *context);
 static void build_uri_for_read(gphadoop_context *context);
 static void build_uri_for_write(gphadoop_context *context);
@@ -33,9 +34,31 @@ static void add_querydata_to_http_headers(gphadoop_context *context);
 static size_t fill_buffer(gphadoop_context *context, char *start, size_t size);
 
 static void
+gpbridge_import_abort_callback(ResourceReleasePhase phase,
+						bool isCommit,
+						bool isTopLevel,
+						void *arg)
+{
+	gphadoop_context *context = arg;
+
+	if (phase != RESOURCE_RELEASE_AFTER_LOCKS)
+		return;
+
+	if (context->owner == CurrentResourceOwner)
+	{
+		if (isCommit)
+			elog(LOG, "pxf gpbridge_import reference leak: %p still referenced", arg);
+
+		gpbridge_cancel(context);
+	}
+}
+
+static void
 gpbridge_cancel(gphadoop_context *context)
 {
 	volatile int savedInterruptHoldoffCount;
+
+	UnregisterResourceReleaseCallback(gpbridge_import_abort_callback, context);
 
 	PG_TRY();
 	{
@@ -63,26 +86,6 @@ gpbridge_cancel(gphadoop_context *context)
 		}
 	}
 	PG_END_TRY();
-}
-
-static void
-gpbridge_import_abort_callback(ResourceReleasePhase phase,
-						bool isCommit,
-						bool isTopLevel,
-						void *arg)
-{
-	gphadoop_context *context = arg;
-
-	if (phase != RESOURCE_RELEASE_AFTER_LOCKS)
-		return;
-
-	if (context->owner == CurrentResourceOwner)
-	{
-		if (isCommit)
-			elog(LOG, "pxf gpbridge_import reference leak: %p still referenced", arg);
-
-		gpbridge_cancel(context);
-	}
 }
 
 /*

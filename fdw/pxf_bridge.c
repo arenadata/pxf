@@ -25,6 +25,8 @@
 #include "cdb/cdbvars.h"
 
 /* helper function declarations */
+static void PxfBridgeImportCancel(PxfFdwScanState *pxfsstate);
+static void BuildUriForCancel(PxfFdwScanState *pxfsstate);
 static void BuildUriForRead(PxfFdwScanState *pxfsstate);
 static void BuildUriForWrite(PxfFdwModifyState *pxfmstate);
 #if PG_VERSION_NUM >= 90600
@@ -59,6 +61,90 @@ PxfBridgeCleanup(PxfFdwModifyState *pxfmstate)
 	}
 }
 
+static void
+PxfBridgeImportAbortCallback(ResourceReleasePhase phase,
+						bool isCommit,
+						bool isTopLevel,
+						void *arg)
+{
+	PxfFdwScanState *pxfsstate = arg;
+
+	if (phase != RESOURCE_RELEASE_AFTER_LOCKS)
+		return;
+
+	if (pxfsstate->owner == CurrentResourceOwner)
+	{
+		if (isCommit)
+			elog(LOG, "pxf gpbridge_import reference leak: %p still referenced", arg);
+
+		PxfBridgeImportCancel(pxfsstate);
+	}
+}
+
+static void
+PxfBridgeImportCancel(PxfFdwScanState *pxfsstate)
+{
+	volatile int savedInterruptHoldoffCount;
+
+	UnregisterResourceReleaseCallback(PxfBridgeImportAbortCallback, pxfsstate);
+
+	PG_TRY();
+	{
+		savedInterruptHoldoffCount = InterruptHoldoffCount;
+
+		BuildUriForCancel(pxfsstate);
+
+		pxfsstate->churl_handle = churl_init_upload_timeout(pxfsstate->uri.data, pxfsstate->churl_headers, 1L);
+
+		churl_cleanup(pxfsstate->churl_handle, false);
+	}
+	PG_CATCH();
+	{
+		InterruptHoldoffCount = savedInterruptHoldoffCount;
+
+		if (elog_demote(WARNING))
+		{
+			EmitErrorReport();
+			FlushErrorState();
+		}
+		else
+		{
+			FlushErrorState();
+			elog(WARNING, "unable to demote error");
+		}
+	}
+	PG_END_TRY();
+
+}
+
+/*
+ * Clean up churl related data structures from the PXF FDW scan state.
+ */
+void
+PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
+{
+	if (pxfsstate == NULL)
+		return;
+
+	UnregisterResourceReleaseCallback(PxfBridgeImportAbortCallback, pxfsstate);
+
+	churl_cleanup(pxfsstate->churl_handle, false);
+	pxfsstate->churl_handle = NULL;
+
+	churl_headers_cleanup(pxfsstate->churl_headers);
+	pxfsstate->churl_headers = NULL;
+
+	if (pxfsstate->uri.data)
+	{
+		pfree(pxfsstate->uri.data);
+	}
+
+	if (pxfsstate->options)
+	{
+		pfree(pxfsstate->options);
+	}
+}
+
 /*
  * Sets up data before starting import
  */
@@ -76,6 +162,9 @@ PxfBridgeImportStart(PxfFdwScanState *pxfsstate)
 					 pxfsstate->projectionInfo);
 
 	pxfsstate->churl_handle = churl_init_download(pxfsstate->uri.data, pxfsstate->churl_headers);
+	pxfsstate->owner = CurrentResourceOwner;
+
+	RegisterResourceReleaseCallback(PxfBridgeImportAbortCallback, pxfsstate);
 
 	/* read some bytes to make sure the connection is established */
 	churl_read_check_connectivity(pxfsstate->churl_handle);
@@ -144,6 +233,19 @@ PxfBridgeWrite(PxfFdwModifyState *pxfmstate, char *databuf, int datalen)
 	}
 
 	return (int) n;
+}
+
+/*
+ * Format the URI for cancel by adding PXF service endpoint details
+ */
+static void
+BuildUriForCancel(PxfFdwScanState *pxfsstate)
+{
+	PxfOptions *options = pxfsstate->options;
+
+	resetStringInfo(&pxfsstate->uri);
+	appendStringInfo(&pxfsstate->uri, "http://%s:%d/%s/cancel", options->pxf_host, options->pxf_port, PXF_SERVICE_PREFIX);
+	elog(DEBUG2, "pxf_fdw: uri %s for cancel", pxfsstate->uri.data);
 }
 
 /*

@@ -25,6 +25,7 @@
 #include "cdb/cdbvars.h"
 
 /* helper function declarations */
+static void BuildUriForCancel(PxfFdwScanState *pxfsstate);
 static void BuildUriForRead(PxfFdwScanState *pxfsstate);
 static void BuildUriForWrite(PxfFdwModifyState *pxfmstate);
 #if PG_VERSION_NUM >= 90600
@@ -115,6 +116,39 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 	UnregisterResourceReleaseCallback(PxfBridgeImportAbortCallback, pxfsstate);
 
 	churl_cleanup(pxfsstate->churl_handle, pxfsstate->after_error);
+
+	if (pxfsstate->after_error)
+	{
+		volatile int savedInterruptHoldoffCount;
+
+		PG_TRY();
+		{
+			savedInterruptHoldoffCount = InterruptHoldoffCount;
+
+			BuildUriForCancel(pxfsstate);
+
+			pxfsstate->churl_handle = churl_init_upload_timeout(pxfsstate->uri.data, pxfsstate->churl_headers, 1L);
+
+			churl_cleanup(pxfsstate->churl_handle, false);
+		}
+		PG_CATCH();
+		{
+			InterruptHoldoffCount = savedInterruptHoldoffCount;
+
+			if (elog_demote(WARNING))
+			{
+				EmitErrorReport();
+				FlushErrorState();
+			}
+			else
+			{
+				FlushErrorState();
+				elog(WARNING, "unable to demote error");
+			}
+		}
+		PG_END_TRY();
+	}
+
 	pxfsstate->churl_handle = NULL;
 
 	churl_headers_cleanup(pxfsstate->churl_headers);
@@ -224,6 +258,19 @@ PxfBridgeWrite(PxfFdwModifyState *pxfmstate, char *databuf, int datalen)
 	}
 
 	return (int) n;
+}
+
+/*
+ * Format the URI for cancel by adding PXF service endpoint details
+ */
+static void
+BuildUriForCancel(PxfFdwScanState *pxfsstate)
+{
+	PxfOptions *options = pxfsstate->options;
+
+	resetStringInfo(&pxfsstate->uri);
+	appendStringInfo(&pxfsstate->uri, "http://%s:%d/%s/cancel", options->pxf_host, options->pxf_port, PXF_SERVICE_PREFIX);
+	elog(DEBUG2, "pxf_fdw: uri %s for cancel", pxfsstate->uri.data);
 }
 
 /*

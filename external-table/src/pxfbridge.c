@@ -26,6 +26,7 @@
 #include "utils/guc.h"
 
 /* helper function declarations */
+static void build_uri_for_cancel(gphadoop_context *context);
 static void build_uri_for_read(gphadoop_context *context);
 static void build_uri_for_write(gphadoop_context *context);
 static void add_querydata_to_http_headers(gphadoop_context *context);
@@ -64,6 +65,39 @@ gpbridge_cleanup(gphadoop_context *context)
 	UnregisterResourceReleaseCallback(gpbridge_abort_callback, context);
 
 	churl_cleanup(context->churl_handle, context->after_error);
+
+	if (context->after_error && !context->upload)
+	{
+		volatile int savedInterruptHoldoffCount;
+
+		PG_TRY();
+		{
+			savedInterruptHoldoffCount = InterruptHoldoffCount;
+
+			build_uri_for_cancel(context);
+
+			context->churl_handle = churl_init_upload_timeout(context->uri.data, context->churl_headers, 1L);
+
+			churl_cleanup(context->churl_handle, false);
+		}
+		PG_CATCH();
+		{
+			InterruptHoldoffCount = savedInterruptHoldoffCount;
+
+			if (elog_demote(WARNING))
+			{
+				EmitErrorReport();
+				FlushErrorState();
+			}
+			else
+			{
+				FlushErrorState();
+				elog(WARNING, "unable to demote error");
+			}
+		}
+		PG_END_TRY();
+	}
+
 	context->churl_handle = NULL;
 
 	churl_headers_cleanup(context->churl_headers);
@@ -159,6 +193,24 @@ gpbridge_write(gphadoop_context *context, char *databuf, int datalen)
 	}
 
 	return (int) n;
+}
+
+/*
+ * Format the URI for cancel by adding PXF service endpoint details
+ */
+static void
+build_uri_for_cancel(gphadoop_context *context)
+{
+	resetStringInfo(&context->uri);
+	appendStringInfo(&context->uri, "http://%s/%s/cancel",
+					 get_authority(), PXF_SERVICE_PREFIX);
+
+	if ((LOG >= log_min_messages) || (LOG >= client_min_messages))
+	{
+		appendStringInfo(&context->uri, "?trace=true");
+	}
+
+	elog(DEBUG2, "pxf: uri %s for cancel", context->uri.data);
 }
 
 /*

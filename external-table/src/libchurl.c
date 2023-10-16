@@ -70,10 +70,10 @@ typedef struct
 	int			curl_still_running;
 
 	/* internal buffer for download */
-	churl_buffer *download_buffer;
+	churl_buffer download_buffer;
 
 	/* internal buffer for upload */
-	churl_buffer *upload_buffer;
+	churl_buffer upload_buffer;
 
 	/*
 	 * holds http error code returned from remote server
@@ -445,7 +445,7 @@ size_t
 churl_write(CHURL_HANDLE handle, const char *buf, size_t bufsize)
 {
 	churl_context *context = (churl_context *) handle;
-	churl_buffer *context_buffer = context->upload_buffer;
+	churl_buffer *context_buffer = &context->upload_buffer;
 
 	Assert(context->upload);
 
@@ -483,7 +483,7 @@ churl_read(CHURL_HANDLE handle, char *buf, size_t max_size)
 {
 	int			n = 0;
 	churl_context *context = (churl_context *) handle;
-	churl_buffer *context_buffer = context->download_buffer;
+	churl_buffer *context_buffer = &context->download_buffer;
 
 	Assert(!context->upload);
 
@@ -525,8 +525,6 @@ churl_cleanup(CHURL_HANDLE handle, bool after_error)
 	}
 
 	cleanup_curl_handle(context);
-	cleanup_internal_buffer(context->download_buffer);
-	cleanup_internal_buffer(context->upload_buffer);
 	churl_cleanup_context(context);
 }
 
@@ -535,8 +533,6 @@ churl_new_context()
 {
 	churl_context *context = palloc0(sizeof(churl_context));
 
-	context->download_buffer = palloc0(sizeof(churl_buffer));
-	context->upload_buffer = palloc0(sizeof(churl_buffer));
 	return context;
 }
 
@@ -575,7 +571,7 @@ static size_t
 read_callback(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
 	churl_context *context = (churl_context *) userdata;
-	churl_buffer *context_buffer = context->upload_buffer;
+	churl_buffer *context_buffer = &context->upload_buffer;
 
 	int			written = Min(size * nmemb, context_buffer->top - context_buffer->bot);
 
@@ -638,7 +634,7 @@ internal_buffer_large_enough(churl_buffer *buffer, size_t required)
 static void
 flush_internal_buffer(churl_context *context)
 {
-	churl_buffer *context_buffer = context->upload_buffer;
+	churl_buffer *context_buffer = &context->upload_buffer;
 
 	if (context_buffer->top == 0)
 		return;
@@ -739,7 +735,7 @@ multi_remove_handle(churl_context *context)
 static void
 cleanup_internal_buffer(churl_buffer *buffer)
 {
-	if ((buffer) && (buffer->ptr))
+	if (buffer->ptr)
 	{
 		pfree(buffer->ptr);
 		buffer->ptr = NULL;
@@ -752,23 +748,9 @@ cleanup_internal_buffer(churl_buffer *buffer)
 static void
 churl_cleanup_context(churl_context *context)
 {
-	if (context)
-	{
-		if (context->download_buffer)
-		{
-			if (context->download_buffer->ptr)
-				pfree(context->download_buffer->ptr);
-			pfree(context->download_buffer);
-		}
-		if (context->upload_buffer)
-		{
-			if (context->upload_buffer->ptr)
-				pfree(context->upload_buffer->ptr);
-			pfree(context->upload_buffer);
-		}
-
-		pfree(context);
-	}
+	cleanup_internal_buffer(&context->download_buffer);
+	cleanup_internal_buffer(&context->upload_buffer);
+	pfree(context);
 }
 
 /*
@@ -780,7 +762,7 @@ static size_t
 write_callback(char *buffer, size_t size, size_t nitems, void *userp)
 {
 	churl_context *context = (churl_context *) userp;
-	churl_buffer *context_buffer = context->download_buffer;
+	churl_buffer *context_buffer = &context->download_buffer;
 	const int	nbytes = size * nitems;
 
 	if (!internal_buffer_large_enough(context_buffer, nbytes))
@@ -812,7 +794,7 @@ fill_internal_buffer(churl_context *context, int want)
 
 	/* attempt to fill buffer */
 	while (context->curl_still_running &&
-		   ((context->download_buffer->top - context->download_buffer->bot) < want))
+		   ((context->download_buffer.top - context->download_buffer.bot) < want))
 	{
 		FD_ZERO(&fdread);
 		FD_ZERO(&fdwrite);
@@ -967,10 +949,10 @@ check_response_code(churl_context *context)
 		initStringInfo(&err);
 
 		/* prepare response text if any */
-		if (context->download_buffer->ptr)
+		if (context->download_buffer.ptr)
 		{
-			context->download_buffer->ptr[context->download_buffer->top] = '\0';
-			response_text = context->download_buffer->ptr + context->download_buffer->bot;
+			context->download_buffer.ptr[context->download_buffer.top] = '\0';
+			response_text = context->download_buffer.ptr + context->download_buffer.bot;
 		}
 
 		appendStringInfo(&err, "PXF server error");

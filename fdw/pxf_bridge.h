@@ -53,6 +53,8 @@ typedef struct PxfFdwScanState
 	PxfOptions *options;
 	CopyState	cstate;
 	ProjectionInfo *projectionInfo;
+	bool		after_error;
+	ResourceOwner owner;
 } PxfFdwScanState;
 
 /*
@@ -72,10 +74,13 @@ typedef struct PxfFdwModifyState
 	Datum	   *values;			/* List of values exported for the row */
 	bool	   *nulls;			/* List of null fields for the exported row */
 #endif
+	bool		after_error;
+	ResourceOwner owner;
 } PxfFdwModifyState;
 
 /* Clean up churl related data structures from the context */
 void		PxfBridgeCleanup(PxfFdwModifyState *context);
+void		PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate);
 
 /* Sets up data before starting import */
 void		PxfBridgeImportStart(PxfFdwScanState *pxfsstate);

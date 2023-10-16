@@ -33,6 +33,48 @@ static size_t FillBuffer(PxfFdwScanState *pxfsstate, char *start, int minlen, in
 static size_t FillBuffer(PxfFdwScanState *pxfsstate, char *start, size_t size);
 #endif
 
+static void
+PxfBridgeImportAbortCallback(ResourceReleasePhase phase,
+						bool isCommit,
+						bool isTopLevel,
+						void *arg)
+{
+	PxfFdwScanState *pxfsstate = arg;
+
+	if (phase != RESOURCE_RELEASE_AFTER_LOCKS)
+		return;
+
+	if (pxfsstate->owner == CurrentResourceOwner)
+	{
+		if (isCommit)
+			elog(LOG, "pxf gpbridge_import reference leak: %p still referenced", arg);
+
+		pxfsstate->after_error = true;
+		PxfBridgeImportCleanup(pxfsstate);
+	}
+}
+
+static void
+PxfBridgeExportAbortCallback(ResourceReleasePhase phase,
+						bool isCommit,
+						bool isTopLevel,
+						void *arg)
+{
+	PxfFdwModifyState *pxfmstate = arg;
+
+	if (phase != RESOURCE_RELEASE_AFTER_LOCKS)
+		return;
+
+	if (pxfmstate->owner == CurrentResourceOwner)
+	{
+		if (isCommit)
+			elog(LOG, "pxf gpbridge_export reference leak: %p still referenced", arg);
+
+		pxfmstate->after_error = true;
+		PxfBridgeCleanup(pxfmstate);
+	}
+}
+
 /*
  * Clean up churl related data structures from the PXF FDW modify state.
  */
@@ -42,7 +84,9 @@ PxfBridgeCleanup(PxfFdwModifyState *pxfmstate)
 	if (pxfmstate == NULL)
 		return;
 
-	churl_cleanup(pxfmstate->churl_handle, false);
+	UnregisterResourceReleaseCallback(PxfBridgeExportAbortCallback, pxfmstate);
+
+	churl_cleanup(pxfmstate->churl_handle, pxfmstate->after_error);
 	pxfmstate->churl_handle = NULL;
 
 	churl_headers_cleanup(pxfmstate->churl_headers);
@@ -56,6 +100,34 @@ PxfBridgeCleanup(PxfFdwModifyState *pxfmstate)
 	if (pxfmstate->options)
 	{
 		pfree(pxfmstate->options);
+	}
+}
+
+/*
+ * Clean up churl related data structures from the PXF FDW scan state.
+ */
+void
+PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
+{
+	if (pxfsstate == NULL)
+		return;
+
+	UnregisterResourceReleaseCallback(PxfBridgeImportAbortCallback, pxfsstate);
+
+	churl_cleanup(pxfsstate->churl_handle, pxfsstate->after_error);
+	pxfsstate->churl_handle = NULL;
+
+	churl_headers_cleanup(pxfsstate->churl_headers);
+	pxfsstate->churl_headers = NULL;
+
+	if (pxfsstate->uri.data)
+	{
+		pfree(pxfsstate->uri.data);
+	}
+
+	if (pxfsstate->options)
+	{
+		pfree(pxfsstate->options);
 	}
 }
 
@@ -76,6 +148,10 @@ PxfBridgeImportStart(PxfFdwScanState *pxfsstate)
 					 pxfsstate->projectionInfo);
 
 	pxfsstate->churl_handle = churl_init_download(pxfsstate->uri.data, pxfsstate->churl_headers);
+	pxfsstate->after_error = false;
+	pxfsstate->owner = CurrentResourceOwner;
+
+	RegisterResourceReleaseCallback(PxfBridgeImportAbortCallback, pxfsstate);
 
 	/* read some bytes to make sure the connection is established */
 	churl_read_check_connectivity(pxfsstate->churl_handle);
@@ -96,6 +172,10 @@ PxfBridgeExportStart(PxfFdwModifyState *pxfmstate)
 					 NULL,
 					 NULL);
 	pxfmstate->churl_handle = churl_init_upload(pxfmstate->uri.data, pxfmstate->churl_headers);
+	pxfmstate->after_error = false;
+	pxfmstate->owner = CurrentResourceOwner;
+
+	RegisterResourceReleaseCallback(PxfBridgeExportAbortCallback, pxfmstate);
 }
 
 /*

@@ -31,6 +31,27 @@ static void build_uri_for_write(gphadoop_context *context);
 static void add_querydata_to_http_headers(gphadoop_context *context);
 static size_t fill_buffer(gphadoop_context *context, char *start, size_t size);
 
+static void
+gpbridge_abort_callback(ResourceReleasePhase phase,
+						bool isCommit,
+						bool isTopLevel,
+						void *arg)
+{
+	gphadoop_context *context = arg;
+
+	if (phase != RESOURCE_RELEASE_AFTER_LOCKS)
+		return;
+
+	if (context->owner == CurrentResourceOwner)
+	{
+		if (isCommit)
+			elog(LOG, "pxf gpbridge_import reference leak: %p still referenced", arg);
+
+		context->after_error = !isCommit;
+		gpbridge_cleanup(context);
+	}
+}
+
 /*
  * Clean up churl related data structures from the context.
  */
@@ -40,7 +61,9 @@ gpbridge_cleanup(gphadoop_context *context)
 	if (context == NULL)
 		return;
 
-	churl_cleanup(context->churl_handle, false);
+	UnregisterResourceReleaseCallback(gpbridge_abort_callback, context);
+
+	churl_cleanup(context->churl_handle, context->after_error);
 	context->churl_handle = NULL;
 
 	churl_headers_cleanup(context->churl_headers);
@@ -70,6 +93,11 @@ gpbridge_import_start(gphadoop_context *context)
 	add_querydata_to_http_headers(context);
 
 	context->churl_handle = churl_init_download(context->uri.data, context->churl_headers);
+	context->after_error = false;
+	context->upload = false;
+	context->owner = CurrentResourceOwner;
+
+	RegisterResourceReleaseCallback(gpbridge_abort_callback, context);
 
 	/* read some bytes to make sure the connection is established */
 	churl_read_check_connectivity(context->churl_handle);
@@ -87,6 +115,11 @@ gpbridge_export_start(gphadoop_context *context)
 	add_querydata_to_http_headers(context);
 
 	context->churl_handle = churl_init_upload(context->uri.data, context->churl_headers);
+	context->after_error = false;
+	context->upload = true;
+	context->owner = CurrentResourceOwner;
+
+	RegisterResourceReleaseCallback(gpbridge_abort_callback, context);
 }
 
 /*

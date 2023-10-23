@@ -66,12 +66,10 @@ gpbridge_cleanup(gphadoop_context *context)
 
 	if (!context->upload && IsAbortInProgress())
 	{
-		int savedInterruptHoldoffCount;
+		int savedInterruptHoldoffCount = InterruptHoldoffCount;
 
 		PG_TRY();
 		{
-			savedInterruptHoldoffCount = InterruptHoldoffCount;
-
 			churl_set_local_port_to_headers(context->churl_handle, context->churl_headers);
 
 			churl_cleanup(context->churl_handle, true);

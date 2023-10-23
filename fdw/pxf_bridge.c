@@ -80,12 +80,10 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 
 	if (IsAbortInProgress())
 	{
-		int savedInterruptHoldoffCount;
+		int savedInterruptHoldoffCount = InterruptHoldoffCount;
 
 		PG_TRY();
 		{
-			savedInterruptHoldoffCount = InterruptHoldoffCount;
-
 			churl_set_local_port_to_headers(pxfsstate->churl_handle, pxfsstate->churl_headers);
 
 			churl_cleanup(pxfsstate->churl_handle, true);

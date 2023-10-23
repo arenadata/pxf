@@ -53,6 +53,7 @@ typedef struct PxfFdwScanState
 	PxfOptions *options;
 	CopyState	cstate;
 	ProjectionInfo *projectionInfo;
+	MemoryContextCallback cleanup;
 } PxfFdwScanState;
 
 /*
@@ -76,6 +77,7 @@ typedef struct PxfFdwModifyState
 
 /* Clean up churl related data structures from the context */
 void		PxfBridgeCleanup(PxfFdwModifyState *context);
+void		PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate);
 
 /* Sets up data before starting import */
 void		PxfBridgeImportStart(PxfFdwScanState *pxfsstate);

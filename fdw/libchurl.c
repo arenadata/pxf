@@ -184,6 +184,40 @@ build_header_str(const char *format, const char *key, const char *value)
 	return header_option;
 }
 
+const char *
+churl_headers_value(CHURL_HEADERS headers, const char *key)
+{
+	churl_settings *settings = (churl_settings *) headers;
+	struct curl_slist *header_cell = settings->headers;
+	char	   *key_option = NULL;
+	char	   *header_data = NULL;
+	int			key_option_len;
+
+	/* key must not be empty */
+	Assert(key != NULL);
+
+	/* key to compare with in the headers */
+	key_option = build_header_str("%s: %s", key, "");
+	key_option_len = strlen(key_option);
+
+	/* find key in headers list */
+	while (header_cell != NULL)
+	{
+		header_data = header_cell->data;
+
+		if (strncmp(key_option, header_data, key_option_len) == 0)
+		{
+			elog(DEBUG2, "churl_headers_value: Found existing header %s with key %s",
+				 header_data, key_option);
+			return header_data + strlen(key) + 2;
+		}
+
+		header_cell = header_cell->next;
+	}
+
+	elog(ERROR, "churl_headers_value error: %s not found in headers", key);
+}
+
 void
 churl_headers_append(CHURL_HEADERS headers, const char *key, const char *value)
 {
@@ -209,7 +243,7 @@ churl_headers_override(CHURL_HEADERS headers, const char *key, const char *value
 	Assert(key != NULL);
 
 	/* key to compare with in the headers */
-	key_option = build_header_str("%s:%s", key, value ? "" : NULL);
+	key_option = build_header_str("%s: %s", key, value ? "" : NULL);
 
 	/* find key in headers list */
 	while (header_cell != NULL)
@@ -257,7 +291,7 @@ churl_headers_remove(CHURL_HEADERS headers, const char *key, bool has_value)
 	Assert(key != NULL);
 
 	/* key to compare with in the headers */
-	key_option = build_header_str("%s:%s", key, has_value ? "" : NULL);
+	key_option = build_header_str("%s: %s", key, has_value ? "" : NULL);
 
 	/* find key in headers list */
 	while (to_del_cell != NULL)
@@ -396,7 +430,7 @@ churl_init(const char *url, CHURL_HEADERS headers)
 }
 
 CHURL_HANDLE
-churl_init_upload(const char *url, CHURL_HEADERS headers)
+churl_init_upload_timeout(const char *url, CHURL_HEADERS headers, long timeout)
 {
 	churl_context *context = churl_init(url, headers);
 
@@ -405,12 +439,19 @@ churl_init_upload(const char *url, CHURL_HEADERS headers)
 	set_curl_option(context, CURLOPT_POST, (const void *) true);
 	set_curl_option(context, CURLOPT_READFUNCTION, read_callback);
 	set_curl_option(context, CURLOPT_READDATA, context);
+	set_curl_option(context, CURLOPT_TIMEOUT, (const void *) timeout);
 	churl_headers_append(headers, "Content-Type", "application/octet-stream");
 	churl_headers_append(headers, "Transfer-Encoding", "chunked");
 	churl_headers_append(headers, "Expect", "100-continue");
 
 	setup_multi_handle(context);
 	return (CHURL_HANDLE) context;
+}
+
+CHURL_HANDLE
+churl_init_upload(const char *url, CHURL_HEADERS headers)
+{
+	return churl_init_upload_timeout(url, headers, 0);
 }
 
 CHURL_HANDLE
@@ -422,6 +463,21 @@ churl_init_download(const char *url, CHURL_HEADERS headers)
 
 	setup_multi_handle(context);
 	return (CHURL_HANDLE) context;
+}
+
+void
+churl_set_local_port_to_headers(CHURL_HANDLE handle, CHURL_HEADERS headers)
+{
+	churl_context *context = (churl_context *) handle;
+
+	int curl_error;
+	long local_port;
+
+	if (CURLE_OK != (curl_error = curl_easy_getinfo(context->curl_handle, CURLINFO_LOCAL_PORT, &local_port)))
+		elog(ERROR, "internal error: curl_easy_getinfo failed(%d - %s)",
+			curl_error, curl_easy_strerror(curl_error));
+
+	churl_headers_override(headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
 }
 
 void

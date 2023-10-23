@@ -105,6 +105,10 @@ void		churl_headers_cleanup(CHURL_HEADERS headers);
  * returns a handle to churl transfer
  */
 CHURL_HANDLE churl_init_upload(const char *url, CHURL_HEADERS headers);
+CHURL_HANDLE churl_init_upload_timeout(const char *url, CHURL_HEADERS headers, long timeout);
+
+void		churl_set_local_port_to_headers(CHURL_HANDLE handle, CHURL_HEADERS headers);
+const char *churl_headers_value(CHURL_HEADERS headers, const char *key);
 
 /*
  * Start a download to url

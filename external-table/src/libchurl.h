@@ -107,7 +107,7 @@ void		churl_headers_cleanup(CHURL_HEADERS headers);
 CHURL_HANDLE churl_init_upload(const char *url, CHURL_HEADERS headers);
 CHURL_HANDLE churl_init_upload_timeout(const char *url, CHURL_HEADERS headers, long timeout);
 
-void		churl_set_local_port_to_headers(CHURL_HANDLE handle, CHURL_HEADERS headers);
+long		churl_get_local_port(CHURL_HANDLE handle);
 
 /*
  * Start a download to url

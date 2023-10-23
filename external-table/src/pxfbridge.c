@@ -70,7 +70,8 @@ gpbridge_cleanup(gphadoop_context *context)
 
 		PG_TRY();
 		{
-			churl_set_local_port_to_headers(context->churl_handle, context->churl_headers);
+			long local_port = churl_get_local_port(context->churl_handle);
+			churl_headers_override(context->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
 
 			churl_cleanup(context->churl_handle, true);
 			context->churl_handle = NULL;

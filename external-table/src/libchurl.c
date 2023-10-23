@@ -424,8 +424,8 @@ churl_init_download(const char *url, CHURL_HEADERS headers)
 	return (CHURL_HANDLE) context;
 }
 
-void
-churl_set_local_port_to_headers(CHURL_HANDLE handle, CHURL_HEADERS headers)
+long
+churl_get_local_port(CHURL_HANDLE handle)
 {
 	churl_context *context = (churl_context *) handle;
 
@@ -436,7 +436,7 @@ churl_set_local_port_to_headers(CHURL_HANDLE handle, CHURL_HEADERS headers)
 		elog(ERROR, "internal error: curl_easy_getinfo failed(%d - %s)",
 			curl_error, curl_easy_strerror(curl_error));
 
-	churl_headers_override(headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
+	return local_port;
 }
 
 void

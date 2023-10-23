@@ -84,7 +84,8 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 
 		PG_TRY();
 		{
-			churl_set_local_port_to_headers(pxfsstate->churl_handle, pxfsstate->churl_headers);
+			long local_port = churl_get_local_port(pxfsstate->churl_handle);
+			churl_headers_override(pxfsstate->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
 
 			churl_cleanup(pxfsstate->churl_handle, true);
 			pxfsstate->churl_handle = NULL;

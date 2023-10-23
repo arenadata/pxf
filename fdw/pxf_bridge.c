@@ -102,7 +102,10 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 			InterruptHoldoffCount = savedInterruptHoldoffCount;
 
 			if (!elog_dismiss(WARNING))
+			{
+				FlushErrorState();
 				elog(WARNING, "unable to dismiss error");
+			}
 		}
 		PG_END_TRY();
 	}

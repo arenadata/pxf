@@ -224,11 +224,10 @@ PxfBridgeWrite(PxfFdwModifyState *pxfmstate, char *databuf, int datalen)
 static void
 BuildUriForCancel(PxfFdwScanState *pxfsstate)
 {
-	const char *host = churl_headers_value(pxfsstate->churl_headers, "X-GP-URL-HOST");
-	const char *port = churl_headers_value(pxfsstate->churl_headers, "X-GP-URL-PORT");
+	PxfOptions *options = pxfsstate->options;
 
 	resetStringInfo(&pxfsstate->uri);
-	appendStringInfo(&pxfsstate->uri, "http://%s:%s/%s/cancel", host, port, PXF_SERVICE_PREFIX);
+	appendStringInfo(&pxfsstate->uri, "http://%s:%d/%s/cancel", options->pxf_host, options->pxf_port, PXF_SERVICE_PREFIX);
 	elog(DEBUG2, "pxf_fdw: uri %s for cancel", pxfsstate->uri.data);
 }
 

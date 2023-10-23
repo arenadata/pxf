@@ -184,40 +184,6 @@ build_header_str(const char *format, const char *key, const char *value)
 	return header_option;
 }
 
-const char *
-churl_headers_value(CHURL_HEADERS headers, const char *key)
-{
-	churl_settings *settings = (churl_settings *) headers;
-	struct curl_slist *header_cell = settings->headers;
-	char	   *key_option = NULL;
-	char	   *header_data = NULL;
-	int			key_option_len;
-
-	/* key must not be empty */
-	Assert(key != NULL);
-
-	/* key to compare with in the headers */
-	key_option = build_header_str("%s: %s", key, "");
-	key_option_len = strlen(key_option);
-
-	/* find key in headers list */
-	while (header_cell != NULL)
-	{
-		header_data = header_cell->data;
-
-		if (strncmp(key_option, header_data, key_option_len) == 0)
-		{
-			elog(DEBUG2, "churl_headers_value: Found existing header %s with key %s",
-				 header_data, key_option);
-			return header_data + strlen(key) + 2;
-		}
-
-		header_cell = header_cell->next;
-	}
-
-	elog(ERROR, "churl_headers_value error: %s not found in headers", key);
-}
-
 void
 churl_headers_append(CHURL_HEADERS headers, const char *key, const char *value)
 {

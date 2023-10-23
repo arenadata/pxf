@@ -195,12 +195,9 @@ gpbridge_write(gphadoop_context *context, char *databuf, int datalen)
 static void
 build_uri_for_cancel(gphadoop_context *context)
 {
-	const char *host = churl_headers_value(context->churl_headers, "X-GP-URL-HOST");
-	const char *port = churl_headers_value(context->churl_headers, "X-GP-URL-PORT");
-
 	resetStringInfo(&context->uri);
-	appendStringInfo(&context->uri, "http://%s:%s/%s/cancel",
-					 host, port, PXF_SERVICE_PREFIX);
+	appendStringInfo(&context->uri, "http://%s/%s/cancel",
+					 get_authority(), PXF_SERVICE_PREFIX);
 
 	if ((LOG >= log_min_messages) || (LOG >= client_min_messages))
 	{

@@ -105,7 +105,7 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 			pxfsstate->cleanup.arg = pxfsstate;
 			pxfsstate->cleanup.func = PxfBridgeImportAbortCallback;
 
-			MemoryContextRegisterResetCallback(CurrentMemoryContext, &pxfsstate->cleanup);
+			//MemoryContextRegisterResetCallback(CurrentMemoryContext, &pxfsstate->cleanup);
 
 			churl_cleanup(pxfsstate->churl_handle, false);
 		}

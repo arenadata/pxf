@@ -427,7 +427,7 @@ pxfBeginForeignScan(ForeignScanState *node, int eflags)
 	 * Save state in node->fdw_state.  We must save enough information to call
 	 * BeginCopyFrom() again.
 	 */
-	pxfsstate = (PxfFdwScanState *) palloc(sizeof(PxfFdwScanState));
+	pxfsstate = (PxfFdwScanState *) palloc0(sizeof(PxfFdwScanState));
 	initStringInfo(&pxfsstate->uri);
 
 	pxfsstate->filter_str = filter_str;
@@ -639,7 +639,7 @@ InitForeignModify(Relation relation)
 
 	tupDesc = RelationGetDescr(relation);
 	options = PxfGetOptions(foreigntableid);
-	pxfmstate = palloc(sizeof(PxfFdwModifyState));
+	pxfmstate = palloc0(sizeof(PxfFdwModifyState));
 
 	initStringInfo(&pxfmstate->uri);
 	pxfmstate->relation = relation;
@@ -756,8 +756,6 @@ FinishForeignModify(PxfFdwModifyState *pxfmstate)
 
 	EndCopyFrom(pxfmstate->cstate);
 	pxfmstate->cstate = NULL;
-	PxfBridgeCleanup(pxfmstate);
-
 }
 
 /*

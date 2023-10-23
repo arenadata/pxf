@@ -54,6 +54,7 @@ typedef struct PxfFdwScanState
 	CopyState	cstate;
 	ProjectionInfo *projectionInfo;
 	MemoryContextCallback cleanup;
+	bool		cancel_request;
 } PxfFdwScanState;
 
 /*

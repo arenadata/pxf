@@ -78,7 +78,7 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 	if (pxfsstate == NULL)
 		return;
 
-	if (IsAbortInProgress())
+	if (!pxfsstate->cancel_request && IsAbortInProgress())
 	{
 		int savedInterruptHoldoffCount = InterruptHoldoffCount;
 
@@ -92,9 +92,14 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 
 			BuildUriForCancel(pxfsstate);
 
-			CHURL_HANDLE churl_handle = churl_init_upload_timeout(pxfsstate->uri.data, pxfsstate->churl_headers, 1L);
+			pxfsstate->cancel_request = true;
+			pxfsstate->churl_handle = churl_init_upload_timeout(pxfsstate->uri.data, pxfsstate->churl_headers, 1L);
+			pxfsstate->cleanup.arg = pxfsstate;
+			pxfsstate->cleanup.func = PxfBridgeImportAbortCallback;
 
-			churl_cleanup(churl_handle, false);
+			MemoryContextRegisterResetCallback(CurrentMemoryContext, &pxfsstate->cleanup);
+
+			churl_cleanup(pxfsstate->churl_handle, false);
 		}
 		PG_CATCH();
 		{
@@ -110,9 +115,12 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 	}
 	else
 	{
-		churl_cleanup(pxfsstate->churl_handle, false);
+		churl_cleanup(pxfsstate->churl_handle, IsAbortInProgress());
 		pxfsstate->churl_handle = NULL;
 	}
+
+	if (pxfsstate->cancel_request)
+		return;
 
 	churl_headers_cleanup(pxfsstate->churl_headers);
 	pxfsstate->churl_headers = NULL;

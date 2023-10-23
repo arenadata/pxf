@@ -64,7 +64,7 @@ gpbridge_cleanup(gphadoop_context *context)
 
 	UnregisterResourceReleaseCallback(gpbridge_import_abort_callback, context);
 
-	if (!context->upload && IsAbortInProgress())
+	if (!context->upload && !context->cancel_request && IsAbortInProgress())
 	{
 		int savedInterruptHoldoffCount = InterruptHoldoffCount;
 
@@ -78,9 +78,13 @@ gpbridge_cleanup(gphadoop_context *context)
 
 			build_uri_for_cancel(context);
 
-			CHURL_HANDLE churl_handle = churl_init_upload_timeout(context->uri.data, context->churl_headers, 1L);
+			context->cancel_request = true;
+			context->churl_handle = churl_init_upload_timeout(context->uri.data, context->churl_headers, 1L);
+			context->owner = CurrentResourceOwner;
 
-			churl_cleanup(churl_handle, false);
+			RegisterResourceReleaseCallback(gpbridge_import_abort_callback, context);
+
+			churl_cleanup(context->churl_handle, false);
 		}
 		PG_CATCH();
 		{
@@ -96,9 +100,12 @@ gpbridge_cleanup(gphadoop_context *context)
 	}
 	else
 	{
-		churl_cleanup(context->churl_handle, false);
+		churl_cleanup(context->churl_handle, IsAbortInProgress());
 		context->churl_handle = NULL;
 	}
+
+	if (context->cancel_request)
+		return;
 
 	churl_headers_cleanup(context->churl_headers);
 	context->churl_headers = NULL;

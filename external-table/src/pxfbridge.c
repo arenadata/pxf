@@ -34,7 +34,7 @@ static void add_querydata_to_http_headers(gphadoop_context *context);
 static size_t fill_buffer(gphadoop_context *context, char *start, size_t size);
 
 static void
-gpbridge_import_abort_callback(ResourceReleasePhase phase,
+gpbridge_abort_callback(ResourceReleasePhase phase,
 						bool isCommit,
 						bool isTopLevel,
 						void *arg)
@@ -62,7 +62,7 @@ gpbridge_cleanup(gphadoop_context *context)
 	if (context == NULL)
 		return;
 
-	UnregisterResourceReleaseCallback(gpbridge_import_abort_callback, context);
+	UnregisterResourceReleaseCallback(gpbridge_abort_callback, context);
 
 	if (!context->upload && !context->cancel_request && IsAbortInProgress())
 	{
@@ -82,7 +82,7 @@ gpbridge_cleanup(gphadoop_context *context)
 			context->churl_handle = churl_init_upload_timeout(context->uri.data, context->churl_headers, 1L);
 			context->owner = CurrentResourceOwner;
 
-			RegisterResourceReleaseCallback(gpbridge_import_abort_callback, context);
+			RegisterResourceReleaseCallback(gpbridge_abort_callback, context);
 
 			churl_cleanup(context->churl_handle, false);
 		}
@@ -137,7 +137,7 @@ gpbridge_import_start(gphadoop_context *context)
 	context->churl_handle = churl_init_download(context->uri.data, context->churl_headers);
 	context->owner = CurrentResourceOwner;
 
-	RegisterResourceReleaseCallback(gpbridge_import_abort_callback, context);
+	RegisterResourceReleaseCallback(gpbridge_abort_callback, context);
 
 	/* read some bytes to make sure the connection is established */
 	churl_read_check_connectivity(context->churl_handle);
@@ -156,6 +156,9 @@ gpbridge_export_start(gphadoop_context *context)
 	add_querydata_to_http_headers(context);
 
 	context->churl_handle = churl_init_upload(context->uri.data, context->churl_headers);
+	context->owner = CurrentResourceOwner;
+
+	RegisterResourceReleaseCallback(gpbridge_abort_callback, context);
 }
 
 /*

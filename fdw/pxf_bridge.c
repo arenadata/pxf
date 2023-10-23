@@ -35,6 +35,14 @@ static size_t FillBuffer(PxfFdwScanState *pxfsstate, char *start, int minlen, in
 static size_t FillBuffer(PxfFdwScanState *pxfsstate, char *start, size_t size);
 #endif
 
+static void
+PxfBridgeExportAbortCallback(void *arg)
+{
+	PxfFdwModifyState *pxfmstate = arg;
+
+	PxfBridgeCleanup(pxfmstate);
+}
+
 /*
  * Clean up churl related data structures from the PXF FDW modify state.
  */
@@ -44,7 +52,7 @@ PxfBridgeCleanup(PxfFdwModifyState *pxfmstate)
 	if (pxfmstate == NULL)
 		return;
 
-	churl_cleanup(pxfmstate->churl_handle, false);
+	churl_cleanup(pxfmstate->churl_handle, IsAbortInProgress());
 	pxfmstate->churl_handle = NULL;
 
 	churl_headers_cleanup(pxfmstate->churl_headers);
@@ -177,6 +185,10 @@ PxfBridgeExportStart(PxfFdwModifyState *pxfmstate)
 					 NULL,
 					 NULL);
 	pxfmstate->churl_handle = churl_init_upload(pxfmstate->uri.data, pxfmstate->churl_headers);
+    pxfmstate->cleanup.arg = pxfmstate;
+    pxfmstate->cleanup.func = PxfBridgeExportAbortCallback;
+
+    MemoryContextRegisterResetCallback(CurrentMemoryContext, &pxfmstate->cleanup);
 }
 
 /*

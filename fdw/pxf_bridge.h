@@ -74,6 +74,7 @@ typedef struct PxfFdwModifyState
 	Datum	   *values;			/* List of values exported for the row */
 	bool	   *nulls;			/* List of null fields for the exported row */
 #endif
+	MemoryContextCallback cleanup;
 } PxfFdwModifyState;
 
 /* Clean up churl related data structures from the context */

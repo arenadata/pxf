@@ -54,7 +54,6 @@ typedef struct PxfFdwScanState
 	CopyState	cstate;
 	ProjectionInfo *projectionInfo;
 	ResourceOwner owner;
-	bool		cancel_request;
 } PxfFdwScanState;
 
 /*

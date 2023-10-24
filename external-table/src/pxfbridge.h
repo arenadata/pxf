@@ -44,7 +44,6 @@ typedef struct
 	List           *quals;
 	bool           completed;
 	bool           upload;
-	bool           cancel_request;
 	ResourceOwner  owner;
 } gphadoop_context;
 

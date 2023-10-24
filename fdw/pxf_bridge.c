@@ -114,7 +114,7 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 
 	UnregisterResourceReleaseCallback(PxfBridgeImportAbortCallback, pxfsstate);
 
-	if (!pxfsstate->cancel_request && IsAbortInProgress())
+	if (IsAbortInProgress())
 	{
 		int savedInterruptHoldoffCount = InterruptHoldoffCount;
 		long local_port = churl_get_local_port(pxfsstate->churl_handle);
@@ -130,11 +130,7 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 
 				BuildUriForCancel(pxfsstate);
 
-				pxfsstate->cancel_request = true;
 				pxfsstate->churl_handle = churl_init_upload_timeout(pxfsstate->uri.data, pxfsstate->churl_headers, 1L);
-				pxfsstate->owner = CurrentResourceOwner;
-
-				RegisterResourceReleaseCallback(PxfBridgeImportAbortCallback, pxfsstate);
 
 				churl_cleanup(pxfsstate->churl_handle, false);
 				pxfsstate->churl_handle = NULL;
@@ -148,6 +144,9 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 					FlushErrorState();
 					elog(WARNING, "unable to dismiss error");
 				}
+
+				churl_cleanup(pxfsstate->churl_handle, true);
+				pxfsstate->churl_handle = NULL;
 			}
 			PG_END_TRY();
 		}
@@ -157,9 +156,6 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 		churl_cleanup(pxfsstate->churl_handle, IsAbortInProgress());
 		pxfsstate->churl_handle = NULL;
 	}
-
-	if (pxfsstate->cancel_request)
-		return;
 
 	churl_headers_cleanup(pxfsstate->churl_headers);
 	pxfsstate->churl_headers = NULL;

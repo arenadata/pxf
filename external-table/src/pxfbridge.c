@@ -67,36 +67,40 @@ gpbridge_cleanup(gphadoop_context *context)
 	if (!context->upload && !context->cancel_request && IsAbortInProgress())
 	{
 		int savedInterruptHoldoffCount = InterruptHoldoffCount;
+		long local_port = churl_get_local_port(context->churl_handle);
 
-		PG_TRY();
+		churl_cleanup(context->churl_handle, true);
+		context->churl_handle = NULL;
+
+		if (local_port > 0)
 		{
-			long local_port = churl_get_local_port(context->churl_handle);
-			churl_headers_override(context->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
-
-			churl_cleanup(context->churl_handle, true);
-			context->churl_handle = NULL;
-
-			build_uri_for_cancel(context);
-
-			context->cancel_request = true;
-			context->churl_handle = churl_init_upload_timeout(context->uri.data, context->churl_headers, 1L);
-			context->owner = CurrentResourceOwner;
-
-			RegisterResourceReleaseCallback(gpbridge_abort_callback, context);
-
-			churl_cleanup(context->churl_handle, false);
-		}
-		PG_CATCH();
-		{
-			InterruptHoldoffCount = savedInterruptHoldoffCount;
-
-			if (!elog_dismiss(WARNING))
+			PG_TRY();
 			{
-				FlushErrorState();
-				elog(WARNING, "unable to dismiss error");
+				churl_headers_override(context->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
+
+				build_uri_for_cancel(context);
+
+				context->cancel_request = true;
+				context->churl_handle = churl_init_upload_timeout(context->uri.data, context->churl_headers, 1L);
+				context->owner = CurrentResourceOwner;
+
+				RegisterResourceReleaseCallback(gpbridge_abort_callback, context);
+
+				churl_cleanup(context->churl_handle, false);
+				context->churl_handle = NULL;
 			}
+			PG_CATCH();
+			{
+				InterruptHoldoffCount = savedInterruptHoldoffCount;
+
+				if (!elog_dismiss(WARNING))
+				{
+					FlushErrorState();
+					elog(WARNING, "unable to dismiss error");
+				}
+			}
+			PG_END_TRY();
 		}
-		PG_END_TRY();
 	}
 	else
 	{

@@ -117,36 +117,40 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 	if (!pxfsstate->cancel_request && IsAbortInProgress())
 	{
 		int savedInterruptHoldoffCount = InterruptHoldoffCount;
+		long local_port = churl_get_local_port(pxfsstate->churl_handle);
 
-		PG_TRY();
+		churl_cleanup(pxfsstate->churl_handle, true);
+		pxfsstate->churl_handle = NULL;
+
+		if (local_port > 0)
 		{
-			long local_port = churl_get_local_port(pxfsstate->churl_handle);
-			churl_headers_override(pxfsstate->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
-
-			churl_cleanup(pxfsstate->churl_handle, true);
-			pxfsstate->churl_handle = NULL;
-
-			BuildUriForCancel(pxfsstate);
-
-			pxfsstate->cancel_request = true;
-			pxfsstate->churl_handle = churl_init_upload_timeout(pxfsstate->uri.data, pxfsstate->churl_headers, 1L);
-			pxfsstate->owner = CurrentResourceOwner;
-
-			RegisterResourceReleaseCallback(PxfBridgeImportAbortCallback, pxfsstate);
-
-			churl_cleanup(pxfsstate->churl_handle, false);
-		}
-		PG_CATCH();
-		{
-			InterruptHoldoffCount = savedInterruptHoldoffCount;
-
-			if (!elog_dismiss(WARNING))
+			PG_TRY();
 			{
-				FlushErrorState();
-				elog(WARNING, "unable to dismiss error");
+				churl_headers_override(pxfsstate->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
+
+				BuildUriForCancel(pxfsstate);
+
+				pxfsstate->cancel_request = true;
+				pxfsstate->churl_handle = churl_init_upload_timeout(pxfsstate->uri.data, pxfsstate->churl_headers, 1L);
+				pxfsstate->owner = CurrentResourceOwner;
+
+				RegisterResourceReleaseCallback(PxfBridgeImportAbortCallback, pxfsstate);
+
+				churl_cleanup(pxfsstate->churl_handle, false);
+				pxfsstate->churl_handle = NULL;
 			}
+			PG_CATCH();
+			{
+				InterruptHoldoffCount = savedInterruptHoldoffCount;
+
+				if (!elog_dismiss(WARNING))
+				{
+					FlushErrorState();
+					elog(WARNING, "unable to dismiss error");
+				}
+			}
+			PG_END_TRY();
 		}
-		PG_END_TRY();
 	}
 	else
 	{

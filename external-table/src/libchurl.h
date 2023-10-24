@@ -107,6 +107,9 @@ void		churl_headers_cleanup(CHURL_HEADERS headers);
 CHURL_HANDLE churl_init_upload(const char *url, CHURL_HEADERS headers);
 CHURL_HANDLE churl_init_upload_timeout(const char *url, CHURL_HEADERS headers, long timeout);
 
+/*
+ * Returns local port of connected handle or 0
+ */
 long		churl_get_local_port(CHURL_HANDLE handle);
 
 /*

@@ -56,7 +56,7 @@ PxfBridgeAbortCallback(ResourceReleasePhase phase,
 }
 
 /*
- * Clean up churl related data structures from the PXF FDW scan state.
+ * Clean up churl related data structures from the PXF FDW scan/modify state.
  */
 void
 PxfBridgeCleanup(PxfFdwCommonState *common)

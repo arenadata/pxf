@@ -571,7 +571,7 @@ pxfEndForeignScan(ForeignScanState *node)
 	if (pxfsstate)
 		EndCopyFrom(pxfsstate->cstate);
 
-	PxfBridgeImportCleanup(pxfsstate);
+	PxfBridgeCleanup(pxfsstate->common);
 	elog(DEBUG5, "pxf_fdw: pxfEndForeignScan ends on segment: %d", PXF_SEGMENT_ID);
 }
 
@@ -762,7 +762,7 @@ FinishForeignModify(PxfFdwModifyState *pxfmstate)
 
 	EndCopyFrom(pxfmstate->cstate);
 	pxfmstate->cstate = NULL;
-	PxfBridgeCleanup(pxfmstate);
+	PxfBridgeCleanup(pxfmstate->common);
 
 }
 

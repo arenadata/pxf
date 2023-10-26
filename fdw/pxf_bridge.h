@@ -79,8 +79,7 @@ typedef struct PxfFdwModifyState
 } PxfFdwModifyState;
 
 /* Clean up churl related data structures from the context */
-void		PxfBridgeCleanup(PxfFdwModifyState *context);
-void		PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate);
+void		PxfBridgeCleanup(PxfFdwCommonState *common);
 
 /* Sets up data before starting import */
 void		PxfBridgeImportStart(PxfFdwScanState *pxfsstate);

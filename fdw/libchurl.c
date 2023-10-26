@@ -209,7 +209,7 @@ churl_headers_override(CHURL_HEADERS headers, const char *key, const char *value
 	Assert(key != NULL);
 
 	/* key to compare with in the headers */
-	key_option = build_header_str("%s: %s", key, value ? "" : NULL);
+	key_option = build_header_str("%s:%s", key, value ? "" : NULL);
 
 	/* find key in headers list */
 	while (header_cell != NULL)
@@ -257,7 +257,7 @@ churl_headers_remove(CHURL_HEADERS headers, const char *key, bool has_value)
 	Assert(key != NULL);
 
 	/* key to compare with in the headers */
-	key_option = build_header_str("%s: %s", key, has_value ? "" : NULL);
+	key_option = build_header_str("%s:%s", key, has_value ? "" : NULL);
 
 	/* find key in headers list */
 	while (to_del_cell != NULL)

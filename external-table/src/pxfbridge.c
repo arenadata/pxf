@@ -76,7 +76,7 @@ gpbridge_cleanup(gphadoop_context *context)
 		{
 			PG_TRY();
 			{
-				churl_headers_override(context->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
+				churl_headers_append(context->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
 
 				build_uri_for_cancel(context);
 

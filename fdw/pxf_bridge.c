@@ -78,7 +78,7 @@ PxfBridgeCleanup(PxfFdwCommonState *common)
 		{
 			PG_TRY();
 			{
-				churl_headers_override(common->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
+				churl_headers_append(common->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
 
 				BuildUriForCancel(common);
 

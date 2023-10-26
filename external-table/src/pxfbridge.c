@@ -59,51 +59,46 @@ gpbridge_abort_callback(ResourceReleasePhase phase,
 void
 gpbridge_cleanup(gphadoop_context *context)
 {
+	long local_port = 0;
+
 	if (context == NULL)
 		return;
 
 	UnregisterResourceReleaseCallback(gpbridge_abort_callback, context);
 
 	if (!context->upload && IsAbortInProgress())
+		local_port = churl_get_local_port(context->churl_handle);
+
+	churl_cleanup(context->churl_handle, IsAbortInProgress());
+	context->churl_handle = NULL;
+
+	if (local_port > 0)
 	{
+		bool after_error = false;
 		int savedInterruptHoldoffCount = InterruptHoldoffCount;
-		long local_port = churl_get_local_port(context->churl_handle);
 
-		churl_cleanup(context->churl_handle, true);
-		context->churl_handle = NULL;
-
-		if (local_port > 0)
+		PG_TRY();
 		{
-			PG_TRY();
-			{
-				churl_headers_append(context->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
+			churl_headers_append(context->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
 
-				build_uri_for_cancel(context);
+			build_uri_for_cancel(context);
 
-				context->churl_handle = churl_init_upload_timeout(context->uri.data, context->churl_headers, 1L);
-
-				churl_cleanup(context->churl_handle, false);
-				context->churl_handle = NULL;
-			}
-			PG_CATCH();
-			{
-				InterruptHoldoffCount = savedInterruptHoldoffCount;
-
-				if (!elog_dismiss(WARNING))
-				{
-					FlushErrorState();
-					elog(WARNING, "unable to dismiss error");
-				}
-
-				churl_cleanup(context->churl_handle, true);
-				context->churl_handle = NULL;
-			}
-			PG_END_TRY();
+			context->churl_handle = churl_init_upload_timeout(context->uri.data, context->churl_headers, 1L);
 		}
-	}
-	else
-	{
-		churl_cleanup(context->churl_handle, IsAbortInProgress());
+		PG_CATCH();
+		{
+			after_error = true;
+			InterruptHoldoffCount = savedInterruptHoldoffCount;
+
+			if (!elog_dismiss(WARNING))
+			{
+				FlushErrorState();
+				elog(WARNING, "unable to dismiss error");
+			}
+		}
+		PG_END_TRY();
+
+		churl_cleanup(context->churl_handle, after_error);
 		context->churl_handle = NULL;
 	}
 

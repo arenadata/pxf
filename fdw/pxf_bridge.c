@@ -61,51 +61,46 @@ PxfBridgeAbortCallback(ResourceReleasePhase phase,
 void
 PxfBridgeCleanup(PxfFdwCommonState *common)
 {
+	long local_port = 0;
+
 	if (common == NULL)
 		return;
 
 	UnregisterResourceReleaseCallback(PxfBridgeAbortCallback, common);
 
 	if (!common->upload && IsAbortInProgress())
+		local_port = churl_get_local_port(common->churl_handle);
+
+	churl_cleanup(common->churl_handle, IsAbortInProgress());
+	common->churl_handle = NULL;
+
+	if (local_port > 0)
 	{
+		bool after_error = false;
 		int savedInterruptHoldoffCount = InterruptHoldoffCount;
-		long local_port = churl_get_local_port(common->churl_handle);
 
-		churl_cleanup(common->churl_handle, true);
-		common->churl_handle = NULL;
-
-		if (local_port > 0)
+		PG_TRY();
 		{
-			PG_TRY();
-			{
-				churl_headers_append(common->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
+			churl_headers_append(common->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
 
-				BuildUriForCancel(common);
+			BuildUriForCancel(common);
 
-				common->churl_handle = churl_init_upload_timeout(common->uri.data, common->churl_headers, 1L);
-
-				churl_cleanup(common->churl_handle, false);
-				common->churl_handle = NULL;
-			}
-			PG_CATCH();
-			{
-				InterruptHoldoffCount = savedInterruptHoldoffCount;
-
-				if (!elog_dismiss(WARNING))
-				{
-					FlushErrorState();
-					elog(WARNING, "unable to dismiss error");
-				}
-
-				churl_cleanup(common->churl_handle, true);
-				common->churl_handle = NULL;
-			}
-			PG_END_TRY();
+			common->churl_handle = churl_init_upload_timeout(common->uri.data, common->churl_headers, 1L);
 		}
-	}
-	else
-	{
-		churl_cleanup(common->churl_handle, IsAbortInProgress());
+		PG_CATCH();
+		{
+			after_error = true;
+			InterruptHoldoffCount = savedInterruptHoldoffCount;
+
+			if (!elog_dismiss(WARNING))
+			{
+				FlushErrorState();
+				elog(WARNING, "unable to dismiss error");
+			}
+		}
+		PG_END_TRY();
+
+		churl_cleanup(common->churl_handle, after_error);
 		common->churl_handle = NULL;
 	}
 

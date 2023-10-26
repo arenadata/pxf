@@ -412,7 +412,6 @@ pxfBeginForeignScan(ForeignScanState *node, int eflags)
 	PxfFdwScanState *pxfsstate    = NULL;
 	Relation	relation          = node->ss.ss_currentRelation;
 	ForeignScan *foreignScan      = (ForeignScan *) node->ss.ps.plan;
-	PxfOptions *options           = NULL;
 
 	/* retrieve fdw-private information from pxfGetForeignPlan() */
 	char *filter_str              = strVal(list_nth(foreignScan->fdw_private, FdwScanPrivateWhereClauses));
@@ -427,14 +426,15 @@ pxfBeginForeignScan(ForeignScanState *node, int eflags)
 	 * Save state in node->fdw_state.  We must save enough information to call
 	 * BeginCopyFrom() again.
 	 */
+	pxfsstate = palloc0(sizeof(PxfFdwScanState));
+
 	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
-	options = PxfGetOptions(foreigntableid);
-	pxfsstate = (PxfFdwScanState *) palloc0(sizeof(PxfFdwScanState));
-	initStringInfo(&pxfsstate->uri);
+	pxfsstate->common = palloc0(sizeof(PxfFdwCommonState));
+	pxfsstate->common->options = PxfGetOptions(foreigntableid);
+	initStringInfo(&pxfsstate->common->uri);
 	MemoryContextSwitchTo(oldcontext);
 
 	pxfsstate->filter_str = filter_str;
-	pxfsstate->options = options;
 	pxfsstate->quals = quals;
 	pxfsstate->relation = relation;
 	pxfsstate->retrieved_attrs = retrieved_attrs;
@@ -626,7 +626,6 @@ InitForeignModify(Relation relation)
 
 	ForeignTable *rel;
 	Oid			foreigntableid;
-	PxfOptions *options = NULL;
 	PxfFdwModifyState *pxfmstate = NULL;
 	TupleDesc	tupDesc;
 
@@ -642,14 +641,15 @@ InitForeignModify(Relation relation)
 		return NULL;
 
 	tupDesc = RelationGetDescr(relation);
-	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
-	options = PxfGetOptions(foreigntableid);
 	pxfmstate = palloc0(sizeof(PxfFdwModifyState));
 
-	initStringInfo(&pxfmstate->uri);
+	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
+	pxfmstate->common = palloc0(sizeof(PxfFdwCommonState));
+	pxfmstate->common->options = PxfGetOptions(foreigntableid);
+	initStringInfo(&pxfmstate->common->uri);
 	MemoryContextSwitchTo(oldcontext);
+
 	pxfmstate->relation = relation;
-	pxfmstate->options = options;
 #if PG_VERSION_NUM < 90600
 	pxfmstate->values = (Datum *) palloc(tupDesc->natts * sizeof(Datum));
 	pxfmstate->nulls = (bool *) palloc(tupDesc->natts * sizeof(bool));
@@ -807,14 +807,14 @@ InitCopyState(PxfFdwScanState *pxfsstate)
 						   &PxfBridgeRead,	/* data_source_cb */
 						   pxfsstate,	/* data_source_cb_extra */
 						   NIL, /* attnamelist */
-						   pxfsstate->options->copy_options	/* copy options */
+						   pxfsstate->common->options->copy_options	/* copy options */
 #if PG_VERSION_NUM < 90600
 						   ,NIL	/* ao_segnos */
 #endif
 						   );
 
 
-	if (pxfsstate->options->reject_limit == -1)
+	if (pxfsstate->common->options->reject_limit == -1)
 	{
 		/* Default error handling - "all-or-nothing" */
 		cstate->cdbsreh = NULL; /* no SREH */
@@ -826,17 +826,17 @@ InitCopyState(PxfFdwScanState *pxfsstate)
 		cstate->errMode = SREH_IGNORE;
 
 		/* select the SREH mode */
-		if (pxfsstate->options->log_errors)
+		if (pxfsstate->common->options->log_errors)
 			cstate->errMode = SREH_LOG; /* errors into file */
 
-		cstate->cdbsreh = makeCdbSreh(pxfsstate->options->reject_limit,
-									  pxfsstate->options->is_reject_limit_rows,
-									  pxfsstate->options->resource,
+		cstate->cdbsreh = makeCdbSreh(pxfsstate->common->options->reject_limit,
+									  pxfsstate->common->options->is_reject_limit_rows,
+									  pxfsstate->common->options->resource,
 									  (char *) cstate->cur_relname,
 #if PG_VERSION_NUM >= 90600
-									  pxfsstate->options->log_errors ? LOG_ERRORS_ENABLE : LOG_ERRORS_DISABLE);
+									  pxfsstate->common->options->log_errors ? LOG_ERRORS_ENABLE : LOG_ERRORS_DISABLE);
 #else
-									  pxfsstate->options->log_errors);
+									  pxfsstate->common->options->log_errors);
 #endif
 
 		cstate->cdbsreh->relid = RelationGetRelid(pxfsstate->relation);
@@ -869,7 +869,7 @@ InitCopyStateForModify(PxfFdwModifyState *pxfmstate)
 	List	   *copy_options;
 	CopyState	cstate;
 
-	copy_options = pxfmstate->options->copy_options;
+	copy_options = pxfmstate->common->options->copy_options;
 
 	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	PxfBridgeExportStart(pxfmstate);
@@ -969,10 +969,10 @@ static void
 PxfBeginScanErrorCallback(void *arg) {
 	PxfFdwScanState *pxfsstate = (PxfFdwScanState *) arg;
 	if (pxfsstate && pxfsstate->relation) {
-		if (pxfsstate->options && pxfsstate->options->resource)
+		if (pxfsstate->common->options && pxfsstate->common->options->resource)
 		{
 			errcontext("Foreign table %s, resource %s",
-					   RelationGetRelationName(pxfsstate->relation), pxfsstate->options->resource);
+					   RelationGetRelationName(pxfsstate->relation), pxfsstate->common->options->resource);
 		}
 		else
 		{
@@ -1006,11 +1006,11 @@ PxfCopyFromErrorCallback(void *arg)
         /* can't usefully display the data */
         if (cstate->cur_attname)
             errcontext("Foreign table %s, record %s of %s, column %s",
-                       cstate->cur_relname, curlineno_str, pxfsstate->options->resource,
+                       cstate->cur_relname, curlineno_str, pxfsstate->common->options->resource,
                        cstate->cur_attname);
         else
             errcontext("Foreign table %s, record %s of %s",
-                       cstate->cur_relname, curlineno_str, pxfsstate->options->resource);
+                       cstate->cur_relname, curlineno_str, pxfsstate->common->options->resource);
     }
     else
     {
@@ -1021,7 +1021,7 @@ PxfCopyFromErrorCallback(void *arg)
 
             attval = limit_printout_length(cstate->cur_attval);
             errcontext("Foreign table %s, record %s of %s, column %s: \"%s\"",
-                       cstate->cur_relname, curlineno_str, pxfsstate->options->resource,
+                       cstate->cur_relname, curlineno_str, pxfsstate->common->options->resource,
                        cstate->cur_attname, attval);
             pfree(attval);
         }
@@ -1029,7 +1029,7 @@ PxfCopyFromErrorCallback(void *arg)
         {
             /* error is relevant to a particular column, value is NULL */
             errcontext("Foreign table %s, record %s of %s, column %s: null input",
-                       cstate->cur_relname, curlineno_str, pxfsstate->options->resource,
+                       cstate->cur_relname, curlineno_str, pxfsstate->common->options->resource,
                        cstate->cur_attname);
         }
         else
@@ -1049,7 +1049,7 @@ PxfCopyFromErrorCallback(void *arg)
                 /* token was found, get the actual message and set it as the main error message */
                 errmsg("%s", token_index + PXF_ERROR_TOKEN_SIZE);
                 errcontext("Foreign table %s, record %s of %s",
-                           cstate->cur_relname, curlineno_str, pxfsstate->options->resource);
+                           cstate->cur_relname, curlineno_str, pxfsstate->common->options->resource);
             }
             /*
              * Error is relevant to a particular line.
@@ -1069,7 +1069,7 @@ PxfCopyFromErrorCallback(void *arg)
                 lineval = limit_printout_length(cstate->line_buf.data);
                 //truncateEolStr(line_buf, cstate->eol_type); <-- this is done in GP6, but not in GP7 ?
                 errcontext("Foreign table %s, record %s of %s: \"%s\"",
-                           cstate->cur_relname, curlineno_str, pxfsstate->options->resource, lineval);
+                           cstate->cur_relname, curlineno_str, pxfsstate->common->options->resource, lineval);
                 pfree(lineval);
             }
             else
@@ -1083,7 +1083,7 @@ PxfCopyFromErrorCallback(void *arg)
                  * and just report the line number.
                  */
                 errcontext("Foreign table %s, record %s of %s",
-                           cstate->cur_relname, curlineno_str, pxfsstate->options->resource);
+                           cstate->cur_relname, curlineno_str, pxfsstate->common->options->resource);
             }
         }
     }

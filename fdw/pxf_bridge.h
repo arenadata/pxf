@@ -34,14 +34,22 @@
 #define PXF_SEGMENT_ID                 GpIdentity.segindex
 #define PXF_SEGMENT_COUNT              getgpsegmentCount()
 
+typedef struct PxfFdwCommonState
+{
+	CHURL_HEADERS churl_headers;
+	CHURL_HANDLE churl_handle;
+	StringInfoData uri;
+	PxfOptions *options;
+	ResourceOwner owner;
+	bool upload;
+} PxfFdwCommonState;
+
 /*
  * Execution state of a foreign scan using pxf_fdw.
  */
 typedef struct PxfFdwScanState
 {
-	CHURL_HEADERS churl_headers;
-	CHURL_HANDLE churl_handle;
-	StringInfoData uri;
+	PxfFdwCommonState *common;
 	Relation	relation;
 	char	   *filter_str;
 #if PG_VERSION_NUM >= 90600
@@ -50,10 +58,8 @@ typedef struct PxfFdwScanState
 	List	   *quals;
 #endif
 	List	   *retrieved_attrs;
-	PxfOptions *options;
 	CopyState	cstate;
 	ProjectionInfo *projectionInfo;
-	ResourceOwner owner;
 } PxfFdwScanState;
 
 /*
@@ -61,19 +67,15 @@ typedef struct PxfFdwScanState
  */
 typedef struct PxfFdwModifyState
 {
+	PxfFdwCommonState *common;
 	CopyState	cstate;			/* state of writing to PXF */
 
-	CHURL_HANDLE churl_handle;	/* curl handle */
-	CHURL_HEADERS churl_headers;	/* curl headers */
-	StringInfoData uri;			/* rest endpoint URI for modify */
 	Relation	relation;
-	PxfOptions *options;		/* FDW options */
 
 #if PG_VERSION_NUM < 90600
 	Datum	   *values;			/* List of values exported for the row */
 	bool	   *nulls;			/* List of null fields for the exported row */
 #endif
-	ResourceOwner owner;
 } PxfFdwModifyState;
 
 /* Clean up churl related data structures from the context */

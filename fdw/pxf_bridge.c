@@ -46,7 +46,7 @@ PxfBridgeExportAbortCallback(ResourceReleasePhase phase,
 	if (phase != RESOURCE_RELEASE_AFTER_LOCKS)
 		return;
 
-	if (pxfmstate->owner == CurrentResourceOwner)
+	if (pxfmstate->common->owner == CurrentResourceOwner)
 	{
 		if (isCommit)
 			elog(LOG, "pxf BridgeExport reference leak: %p still referenced", arg);
@@ -66,20 +66,20 @@ PxfBridgeCleanup(PxfFdwModifyState *pxfmstate)
 
 	UnregisterResourceReleaseCallback(PxfBridgeExportAbortCallback, pxfmstate);
 
-	churl_cleanup(pxfmstate->churl_handle, IsAbortInProgress());
-	pxfmstate->churl_handle = NULL;
+	churl_cleanup(pxfmstate->common->churl_handle, IsAbortInProgress());
+	pxfmstate->common->churl_handle = NULL;
 
-	churl_headers_cleanup(pxfmstate->churl_headers);
-	pxfmstate->churl_headers = NULL;
+	churl_headers_cleanup(pxfmstate->common->churl_headers);
+	pxfmstate->common->churl_headers = NULL;
 
-	if (pxfmstate->uri.data)
+	if (pxfmstate->common->uri.data)
 	{
-		pfree(pxfmstate->uri.data);
+		pfree(pxfmstate->common->uri.data);
 	}
 
-	if (pxfmstate->options)
+	if (pxfmstate->common->options)
 	{
-		pfree(pxfmstate->options);
+		pfree(pxfmstate->common->options);
 	}
 }
 
@@ -94,7 +94,7 @@ PxfBridgeImportAbortCallback(ResourceReleasePhase phase,
 	if (phase != RESOURCE_RELEASE_AFTER_LOCKS)
 		return;
 
-	if (pxfsstate->owner == CurrentResourceOwner)
+	if (pxfsstate->common->owner == CurrentResourceOwner)
 	{
 		if (isCommit)
 			elog(LOG, "pxf BridgeExport reference leak: %p still referenced", arg);
@@ -117,23 +117,23 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 	if (IsAbortInProgress())
 	{
 		int savedInterruptHoldoffCount = InterruptHoldoffCount;
-		long local_port = churl_get_local_port(pxfsstate->churl_handle);
+		long local_port = churl_get_local_port(pxfsstate->common->churl_handle);
 
-		churl_cleanup(pxfsstate->churl_handle, true);
-		pxfsstate->churl_handle = NULL;
+		churl_cleanup(pxfsstate->common->churl_handle, true);
+		pxfsstate->common->churl_handle = NULL;
 
 		if (local_port > 0)
 		{
 			PG_TRY();
 			{
-				churl_headers_override(pxfsstate->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
+				churl_headers_override(pxfsstate->common->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
 
 				BuildUriForCancel(pxfsstate);
 
-				pxfsstate->churl_handle = churl_init_upload_timeout(pxfsstate->uri.data, pxfsstate->churl_headers, 1L);
+				pxfsstate->common->churl_handle = churl_init_upload_timeout(pxfsstate->common->uri.data, pxfsstate->common->churl_headers, 1L);
 
-				churl_cleanup(pxfsstate->churl_handle, false);
-				pxfsstate->churl_handle = NULL;
+				churl_cleanup(pxfsstate->common->churl_handle, false);
+				pxfsstate->common->churl_handle = NULL;
 			}
 			PG_CATCH();
 			{
@@ -145,29 +145,29 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 					elog(WARNING, "unable to dismiss error");
 				}
 
-				churl_cleanup(pxfsstate->churl_handle, true);
-				pxfsstate->churl_handle = NULL;
+				churl_cleanup(pxfsstate->common->churl_handle, true);
+				pxfsstate->common->churl_handle = NULL;
 			}
 			PG_END_TRY();
 		}
 	}
 	else
 	{
-		churl_cleanup(pxfsstate->churl_handle, IsAbortInProgress());
-		pxfsstate->churl_handle = NULL;
+		churl_cleanup(pxfsstate->common->churl_handle, IsAbortInProgress());
+		pxfsstate->common->churl_handle = NULL;
 	}
 
-	churl_headers_cleanup(pxfsstate->churl_headers);
-	pxfsstate->churl_headers = NULL;
+	churl_headers_cleanup(pxfsstate->common->churl_headers);
+	pxfsstate->common->churl_headers = NULL;
 
-	if (pxfsstate->uri.data)
+	if (pxfsstate->common->uri.data)
 	{
-		pfree(pxfsstate->uri.data);
+		pfree(pxfsstate->common->uri.data);
 	}
 
-	if (pxfsstate->options)
+	if (pxfsstate->common->options)
 	{
-		pfree(pxfsstate->options);
+		pfree(pxfsstate->common->options);
 	}
 }
 
@@ -177,23 +177,23 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 void
 PxfBridgeImportStart(PxfFdwScanState *pxfsstate)
 {
-	pxfsstate->churl_headers = churl_headers_init();
+	pxfsstate->common->churl_headers = churl_headers_init();
 
 	BuildUriForRead(pxfsstate);
-	BuildHttpHeaders(pxfsstate->churl_headers,
-					 pxfsstate->options,
+	BuildHttpHeaders(pxfsstate->common->churl_headers,
+					 pxfsstate->common->options,
 					 pxfsstate->relation,
 					 pxfsstate->filter_str,
 					 pxfsstate->retrieved_attrs,
 					 pxfsstate->projectionInfo);
 
-	pxfsstate->churl_handle = churl_init_download(pxfsstate->uri.data, pxfsstate->churl_headers);
-	pxfsstate->owner = CurrentResourceOwner;
+	pxfsstate->common->churl_handle = churl_init_download(pxfsstate->common->uri.data, pxfsstate->common->churl_headers);
+	pxfsstate->common->owner = CurrentResourceOwner;
 
 	RegisterResourceReleaseCallback(PxfBridgeImportAbortCallback, pxfsstate);
 
 	/* read some bytes to make sure the connection is established */
-	churl_read_check_connectivity(pxfsstate->churl_handle);
+	churl_read_check_connectivity(pxfsstate->common->churl_handle);
 }
 
 /*
@@ -203,15 +203,15 @@ void
 PxfBridgeExportStart(PxfFdwModifyState *pxfmstate)
 {
 	BuildUriForWrite(pxfmstate);
-	pxfmstate->churl_headers = churl_headers_init();
-	BuildHttpHeaders(pxfmstate->churl_headers,
-					 pxfmstate->options,
+	pxfmstate->common->churl_headers = churl_headers_init();
+	BuildHttpHeaders(pxfmstate->common->churl_headers,
+					 pxfmstate->common->options,
 					 pxfmstate->relation,
 					 NULL,
 					 NULL,
 					 NULL);
-	pxfmstate->churl_handle = churl_init_upload(pxfmstate->uri.data, pxfmstate->churl_headers);
-	pxfmstate->owner = CurrentResourceOwner;
+	pxfmstate->common->churl_handle = churl_init_upload(pxfmstate->common->uri.data, pxfmstate->common->churl_headers);
+	pxfmstate->common->owner = CurrentResourceOwner;
 
 	RegisterResourceReleaseCallback(PxfBridgeExportAbortCallback, pxfmstate);
 }
@@ -238,11 +238,11 @@ PxfBridgeRead(void *outbuf, int datasize, void *extra)
 	if (n == 0)
 	{
 		/* check if the connection terminated with an error */
-		churl_read_check_connectivity(pxfsstate->churl_handle);
+		churl_read_check_connectivity(pxfsstate->common->churl_handle);
 	}
 
 	elog(DEBUG5, "pxf PxfBridgeRead: segment %d read %zu bytes from %s",
-		 PXF_SEGMENT_ID, n, pxfsstate->options->resource);
+		 PXF_SEGMENT_ID, n, pxfsstate->common->options->resource);
 
 	return (int) n;
 }
@@ -257,8 +257,8 @@ PxfBridgeWrite(PxfFdwModifyState *pxfmstate, char *databuf, int datalen)
 
 	if (datalen > 0)
 	{
-		n = churl_write(pxfmstate->churl_handle, databuf, datalen);
-		elog(DEBUG5, "pxf PxfBridgeWrite: segment %d wrote %zu bytes to %s", PXF_SEGMENT_ID, n, pxfmstate->options->resource);
+		n = churl_write(pxfmstate->common->churl_handle, databuf, datalen);
+		elog(DEBUG5, "pxf PxfBridgeWrite: segment %d wrote %zu bytes to %s", PXF_SEGMENT_ID, n, pxfmstate->common->options->resource);
 	}
 
 	return (int) n;
@@ -270,11 +270,11 @@ PxfBridgeWrite(PxfFdwModifyState *pxfmstate, char *databuf, int datalen)
 static void
 BuildUriForCancel(PxfFdwScanState *pxfsstate)
 {
-	PxfOptions *options = pxfsstate->options;
+	PxfOptions *options = pxfsstate->common->options;
 
-	resetStringInfo(&pxfsstate->uri);
-	appendStringInfo(&pxfsstate->uri, "http://%s:%d/%s/cancel", options->pxf_host, options->pxf_port, PXF_SERVICE_PREFIX);
-	elog(DEBUG2, "pxf_fdw: uri %s for cancel", pxfsstate->uri.data);
+	resetStringInfo(&pxfsstate->common->uri);
+	appendStringInfo(&pxfsstate->common->uri, "http://%s:%d/%s/cancel", options->pxf_host, options->pxf_port, PXF_SERVICE_PREFIX);
+	elog(DEBUG2, "pxf_fdw: uri %s for cancel", pxfsstate->common->uri.data);
 }
 
 /*
@@ -283,11 +283,11 @@ BuildUriForCancel(PxfFdwScanState *pxfsstate)
 static void
 BuildUriForRead(PxfFdwScanState *pxfsstate)
 {
-	PxfOptions *options = pxfsstate->options;
+	PxfOptions *options = pxfsstate->common->options;
 
-	resetStringInfo(&pxfsstate->uri);
-	appendStringInfo(&pxfsstate->uri, "http://%s:%d/%s/read", options->pxf_host, options->pxf_port, PXF_SERVICE_PREFIX);
-	elog(DEBUG2, "pxf_fdw: uri %s for read", pxfsstate->uri.data);
+	resetStringInfo(&pxfsstate->common->uri);
+	appendStringInfo(&pxfsstate->common->uri, "http://%s:%d/%s/read", options->pxf_host, options->pxf_port, PXF_SERVICE_PREFIX);
+	elog(DEBUG2, "pxf_fdw: uri %s for read", pxfsstate->common->uri.data);
 }
 
 /*
@@ -296,11 +296,11 @@ BuildUriForRead(PxfFdwScanState *pxfsstate)
 static void
 BuildUriForWrite(PxfFdwModifyState *pxfmstate)
 {
-	PxfOptions *options = pxfmstate->options;
+	PxfOptions *options = pxfmstate->common->options;
 
-	resetStringInfo(&pxfmstate->uri);
-	appendStringInfo(&pxfmstate->uri, "http://%s:%d/%s/write", options->pxf_host, options->pxf_port, PXF_SERVICE_PREFIX);
-	elog(DEBUG2, "pxf_fdw: uri %s with file name for write: %s", pxfmstate->uri.data, options->resource);
+	resetStringInfo(&pxfmstate->common->uri);
+	appendStringInfo(&pxfmstate->common->uri, "http://%s:%d/%s/write", options->pxf_host, options->pxf_port, PXF_SERVICE_PREFIX);
+	elog(DEBUG2, "pxf_fdw: uri %s with file name for write: %s", pxfmstate->common->uri.data, options->resource);
 }
 
 /*
@@ -321,13 +321,13 @@ FillBuffer(PxfFdwScanState *pxfsstate, char *start, size_t size)
 
 	while (ptr < minend)
 	{
-		n = churl_read(pxfsstate->churl_handle, ptr, maxend - ptr);
+		n = churl_read(pxfsstate->common->churl_handle, ptr, maxend - ptr);
 #else
 	char	   *end = ptr + size;
 
 	while (ptr < end)
 	{
-		n = churl_read(pxfsstate->churl_handle, ptr, end - ptr);
+		n = churl_read(pxfsstate->common->churl_handle, ptr, end - ptr);
 #endif
 		if (n == 0)
 			break;

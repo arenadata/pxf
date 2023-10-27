@@ -162,7 +162,7 @@ PxfBridgeImportStart(PxfFdwScanState *pxfsstate)
 					 pxfsstate->projectionInfo);
 
 	pxfsstate->common->churl_handle = churl_init_download(pxfsstate->common->uri.data, pxfsstate->common->churl_headers);
-	pxfsstate->common->owner = CurTransactionResourceOwner;
+	pxfsstate->common->owner = CurrentResourceOwner;
 
 	RegisterResourceReleaseCallback(PxfBridgeAbortCallback, pxfsstate->common);
 

@@ -38,9 +38,9 @@ typedef struct PxfFdwCommonState
 {
 	CHURL_HEADERS churl_headers;
 	CHURL_HANDLE churl_handle;
-	StringInfoData uri;
-	PxfOptions *options;
 	ResourceOwner owner;
+	int			pxf_port;		/* port number for the PXF Service */
+	char	   *pxf_host;		/* hostname for the PXF Service */
 } PxfFdwCommonState;
 
 /*
@@ -49,6 +49,7 @@ typedef struct PxfFdwCommonState
 typedef struct PxfFdwScanState
 {
 	PxfFdwCommonState *common;
+	StringInfoData uri;
 	Relation	relation;
 	char	   *filter_str;
 #if PG_VERSION_NUM >= 90600
@@ -57,6 +58,7 @@ typedef struct PxfFdwScanState
 	List	   *quals;
 #endif
 	List	   *retrieved_attrs;
+	PxfOptions *options;
 	CopyState	cstate;
 	ProjectionInfo *projectionInfo;
 } PxfFdwScanState;
@@ -81,7 +83,7 @@ typedef struct PxfFdwModifyState
 } PxfFdwModifyState;
 
 /* Clean up churl related data structures from the context */
-void		PxfBridgeImportCleanup(PxfFdwCommonState *common);
+void		PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate);
 void		PxfBridgeCleanup(PxfFdwModifyState *context);
 
 /* Sets up data before starting import */

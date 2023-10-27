@@ -34,21 +34,13 @@
 #define PXF_SEGMENT_ID                 GpIdentity.segindex
 #define PXF_SEGMENT_COUNT              getgpsegmentCount()
 
-typedef struct PxfFdwCommonState
-{
-	CHURL_HEADERS churl_headers;
-	CHURL_HANDLE churl_handle;
-	ResourceOwner owner;
-	int			pxf_port;		/* port number for the PXF Service */
-	char	   *pxf_host;		/* hostname for the PXF Service */
-} PxfFdwCommonState;
-
 /*
  * Execution state of a foreign scan using pxf_fdw.
  */
 typedef struct PxfFdwScanState
 {
-	PxfFdwCommonState *common;
+	CHURL_HEADERS churl_headers;
+	CHURL_HANDLE churl_handle;
 	StringInfoData uri;
 	Relation	relation;
 	char	   *filter_str;

@@ -27,6 +27,7 @@
 #include "access/xact.h"
 
 /* helper function declarations */
+static void gpbridge_cancel(gphadoop_context *context);
 static void build_uri_for_cancel(gphadoop_context *context);
 static void build_uri_for_read(gphadoop_context *context);
 static void build_uri_for_write(gphadoop_context *context);
@@ -49,32 +50,18 @@ gpbridge_abort_callback(ResourceReleasePhase phase,
 		if (isCommit)
 			elog(LOG, "pxf gpbridge_import reference leak: %p still referenced", arg);
 
-		gpbridge_cleanup(context);
+		gpbridge_cancel(context);
 	}
 }
 
-/*
- * Clean up churl related data structures from the context.
- */
-void
-gpbridge_cleanup(gphadoop_context *context)
+static void gpbridge_cancel(gphadoop_context *context)
 {
-	long local_port = 0;
-
-	if (context == NULL)
-		return;
-
 	UnregisterResourceReleaseCallback(gpbridge_abort_callback, context);
 
-	if (!context->upload && IsAbortInProgress())
-		local_port = churl_get_local_port(context->churl_handle);
-
-	churl_cleanup(context->churl_handle, IsAbortInProgress());
-	context->churl_handle = NULL;
+	long local_port = churl_get_local_port(context->churl_handle);
 
 	if (local_port > 0)
 	{
-		bool after_error = false;
 		int savedInterruptHoldoffCount = InterruptHoldoffCount;
 
 		PG_TRY();
@@ -83,11 +70,12 @@ gpbridge_cleanup(gphadoop_context *context)
 
 			build_uri_for_cancel(context);
 
-			context->churl_handle = churl_init_upload_timeout(context->uri.data, context->churl_headers, 1L);
+			CHURL_HANDLE churl_handle = churl_init_upload_timeout(context->uri.data, context->churl_headers, 1L);
+
+			churl_cleanup(churl_handle, false);
 		}
 		PG_CATCH();
 		{
-			after_error = true;
 			InterruptHoldoffCount = savedInterruptHoldoffCount;
 
 			if (!elog_dismiss(WARNING))
@@ -97,10 +85,22 @@ gpbridge_cleanup(gphadoop_context *context)
 			}
 		}
 		PG_END_TRY();
-
-		churl_cleanup(context->churl_handle, after_error);
-		context->churl_handle = NULL;
 	}
+}
+
+/*
+ * Clean up churl related data structures from the context.
+ */
+void
+gpbridge_cleanup(gphadoop_context *context)
+{
+	if (context == NULL)
+		return;
+
+	UnregisterResourceReleaseCallback(gpbridge_abort_callback, context);
+
+	churl_cleanup(context->churl_handle, IsAbortInProgress());
+	context->churl_handle = NULL;
 
 	churl_headers_cleanup(context->churl_headers);
 	context->churl_headers = NULL;
@@ -124,7 +124,6 @@ gpbridge_cleanup(gphadoop_context *context)
 void
 gpbridge_import_start(gphadoop_context *context)
 {
-	context->upload = false;
 	build_uri_for_read(context);
 	context->churl_headers = churl_headers_init();
 	add_querydata_to_http_headers(context);
@@ -144,16 +143,12 @@ gpbridge_import_start(gphadoop_context *context)
 void
 gpbridge_export_start(gphadoop_context *context)
 {
-	context->upload = true;
 	elog(DEBUG2, "pxf: file name for write: %s", context->gphd_uri->data);
 	build_uri_for_write(context);
 	context->churl_headers = churl_headers_init();
 	add_querydata_to_http_headers(context);
 
 	context->churl_handle = churl_init_upload(context->uri.data, context->churl_headers);
-	context->owner = CurrentResourceOwner;
-
-	RegisterResourceReleaseCallback(gpbridge_abort_callback, context);
 }
 
 /*

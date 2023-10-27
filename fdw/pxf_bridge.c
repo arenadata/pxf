@@ -64,32 +64,32 @@ PxfBridgeCancel(PxfFdwCommonState *common)
 
 	long local_port = churl_get_local_port(common->churl_handle);
 
-	if (local_port > 0)
+	if (local_port == 0)
+		return;
+
+	int savedInterruptHoldoffCount = InterruptHoldoffCount;
+
+	PG_TRY();
 	{
-		int savedInterruptHoldoffCount = InterruptHoldoffCount;
+		churl_headers_append(common->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
 
-		PG_TRY();
-		{
-			churl_headers_append(common->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
+		char *uri = BuildUriForCancel(common);
 
-			char *uri = BuildUriForCancel(common);
+		CHURL_HANDLE churl_handle = churl_init_upload_timeout(uri, common->churl_headers, 1L);
 
-			CHURL_HANDLE churl_handle = churl_init_upload_timeout(uri, common->churl_headers, 1L);
-
-			churl_cleanup(churl_handle, false);
-		}
-		PG_CATCH();
-		{
-			InterruptHoldoffCount = savedInterruptHoldoffCount;
-
-			if (!elog_dismiss(WARNING))
-			{
-				FlushErrorState();
-				elog(WARNING, "unable to dismiss error");
-			}
-		}
-		PG_END_TRY();
+		churl_cleanup(churl_handle, false);
 	}
+	PG_CATCH();
+	{
+		InterruptHoldoffCount = savedInterruptHoldoffCount;
+
+		if (!elog_dismiss(WARNING))
+		{
+			FlushErrorState();
+			elog(WARNING, "unable to dismiss error");
+		}
+	}
+	PG_END_TRY();
 }
 
 /*

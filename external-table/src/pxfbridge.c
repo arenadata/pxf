@@ -61,32 +61,32 @@ gpbridge_cancel(gphadoop_context *context)
 
 	long local_port = churl_get_local_port(context->churl_handle);
 
-	if (local_port > 0)
+	if (local_port == 0)
+		return;
+
+	int savedInterruptHoldoffCount = InterruptHoldoffCount;
+
+	PG_TRY();
 	{
-		int savedInterruptHoldoffCount = InterruptHoldoffCount;
+		churl_headers_append(context->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
 
-		PG_TRY();
-		{
-			churl_headers_append(context->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
+		build_uri_for_cancel(context);
 
-			build_uri_for_cancel(context);
+		CHURL_HANDLE churl_handle = churl_init_upload_timeout(context->uri.data, context->churl_headers, 1L);
 
-			CHURL_HANDLE churl_handle = churl_init_upload_timeout(context->uri.data, context->churl_headers, 1L);
-
-			churl_cleanup(churl_handle, false);
-		}
-		PG_CATCH();
-		{
-			InterruptHoldoffCount = savedInterruptHoldoffCount;
-
-			if (!elog_dismiss(WARNING))
-			{
-				FlushErrorState();
-				elog(WARNING, "unable to dismiss error");
-			}
-		}
-		PG_END_TRY();
+		churl_cleanup(churl_handle, false);
 	}
+	PG_CATCH();
+	{
+		InterruptHoldoffCount = savedInterruptHoldoffCount;
+
+		if (!elog_dismiss(WARNING))
+		{
+			FlushErrorState();
+			elog(WARNING, "unable to dismiss error");
+		}
+	}
+	PG_END_TRY();
 }
 
 /*

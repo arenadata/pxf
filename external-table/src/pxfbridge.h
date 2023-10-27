@@ -43,7 +43,6 @@ typedef struct
 	ProjectionInfo *proj_info;
 	List           *quals;
 	bool           completed;
-	ResourceOwner  owner;
 } gphadoop_context;
 
 /*

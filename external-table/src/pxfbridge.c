@@ -99,7 +99,7 @@ gpbridge_cleanup(gphadoop_context *context)
 
 	UnregisterResourceReleaseCallback(gpbridge_abort_callback, context);
 
-	churl_cleanup(context->churl_handle, IsAbortInProgress());
+	churl_cleanup(context->churl_handle, false);
 	context->churl_handle = NULL;
 
 	churl_headers_cleanup(context->churl_headers);

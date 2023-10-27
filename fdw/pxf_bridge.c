@@ -26,9 +26,10 @@
 #include "access/xact.h"
 
 /* helper function declarations */
+static void PxfBridgeCancel(PxfFdwCommonState *common);
 static void BuildUriForCancel(PxfFdwCommonState *common);
 static void BuildUriForRead(PxfFdwCommonState *common);
-static void BuildUriForWrite(PxfFdwCommonState *common);
+static void BuildUriForWrite(PxfFdwModifyState *pxfmstate);
 #if PG_VERSION_NUM >= 90600
 static size_t FillBuffer(PxfFdwScanState *pxfsstate, char *start, int minlen, int maxlen);
 #else
@@ -51,32 +52,18 @@ PxfBridgeAbortCallback(ResourceReleasePhase phase,
 		if (isCommit)
 			elog(LOG, "pxf BridgeExport reference leak: %p still referenced", arg);
 
-		PxfBridgeCleanup(common);
+		PxfBridgeCancel(common);
 	}
 }
 
-/*
- * Clean up churl related data structures from the PXF FDW scan/modify state.
- */
-void
-PxfBridgeCleanup(PxfFdwCommonState *common)
+static void PxfBridgeCancel(PxfFdwCommonState *common)
 {
-	long local_port = 0;
-
-	if (common == NULL)
-		return;
-
 	UnregisterResourceReleaseCallback(PxfBridgeAbortCallback, common);
 
-	if (!common->upload && IsAbortInProgress())
-		local_port = churl_get_local_port(common->churl_handle);
-
-	churl_cleanup(common->churl_handle, IsAbortInProgress());
-	common->churl_handle = NULL;
+	long local_port = churl_get_local_port(common->churl_handle);
 
 	if (local_port > 0)
 	{
-		bool after_error = false;
 		int savedInterruptHoldoffCount = InterruptHoldoffCount;
 
 		PG_TRY();
@@ -85,11 +72,12 @@ PxfBridgeCleanup(PxfFdwCommonState *common)
 
 			BuildUriForCancel(common);
 
-			common->churl_handle = churl_init_upload_timeout(common->uri.data, common->churl_headers, 1L);
+			CHURL_HANDLE churl_handle = churl_init_upload_timeout(common->uri.data, common->churl_headers, 1L);
+
+			churl_cleanup(churl_handle, false);
 		}
 		PG_CATCH();
 		{
-			after_error = true;
 			InterruptHoldoffCount = savedInterruptHoldoffCount;
 
 			if (!elog_dismiss(WARNING))
@@ -99,10 +87,22 @@ PxfBridgeCleanup(PxfFdwCommonState *common)
 			}
 		}
 		PG_END_TRY();
-
-		churl_cleanup(common->churl_handle, after_error);
-		common->churl_handle = NULL;
 	}
+}
+
+/*
+ * Clean up churl related data structures from the PXF FDW scan state.
+ */
+void
+PxfBridgeImportCleanup(PxfFdwCommonState *common)
+{
+	if (common == NULL)
+		return;
+
+	UnregisterResourceReleaseCallback(PxfBridgeAbortCallback, common);
+
+	churl_cleanup(common->churl_handle, false);
+	common->churl_handle = NULL;
 
 	churl_headers_cleanup(common->churl_headers);
 	common->churl_headers = NULL;
@@ -119,12 +119,37 @@ PxfBridgeCleanup(PxfFdwCommonState *common)
 }
 
 /*
+ * Clean up churl related data structures from the PXF FDW modify state.
+ */
+void
+PxfBridgeCleanup(PxfFdwModifyState *pxfmstate)
+{
+	if (pxfmstate == NULL)
+		return;
+
+	churl_cleanup(pxfmstate->churl_handle, false);
+	pxfmstate->churl_handle = NULL;
+
+	churl_headers_cleanup(pxfmstate->churl_headers);
+	pxfmstate->churl_headers = NULL;
+
+	if (pxfmstate->uri.data)
+	{
+		pfree(pxfmstate->uri.data);
+	}
+
+	if (pxfmstate->options)
+	{
+		pfree(pxfmstate->options);
+	}
+}
+
+/*
  * Sets up data before starting import
  */
 void
 PxfBridgeImportStart(PxfFdwScanState *pxfsstate)
 {
-	pxfsstate->common->upload = false;
 	pxfsstate->common->churl_headers = churl_headers_init();
 
 	BuildUriForRead(pxfsstate->common);
@@ -150,19 +175,15 @@ PxfBridgeImportStart(PxfFdwScanState *pxfsstate)
 void
 PxfBridgeExportStart(PxfFdwModifyState *pxfmstate)
 {
-	pxfmstate->common->upload = true;
-	BuildUriForWrite(pxfmstate->common);
-	pxfmstate->common->churl_headers = churl_headers_init();
-	BuildHttpHeaders(pxfmstate->common->churl_headers,
-					 pxfmstate->common->options,
+	BuildUriForWrite(pxfmstate);
+	pxfmstate->churl_headers = churl_headers_init();
+	BuildHttpHeaders(pxfmstate->churl_headers,
+					 pxfmstate->options,
 					 pxfmstate->relation,
 					 NULL,
 					 NULL,
 					 NULL);
-	pxfmstate->common->churl_handle = churl_init_upload(pxfmstate->common->uri.data, pxfmstate->common->churl_headers);
-	pxfmstate->common->owner = CurTransactionResourceOwner;
-
-	RegisterResourceReleaseCallback(PxfBridgeAbortCallback, pxfmstate->common);
+	pxfmstate->churl_handle = churl_init_upload(pxfmstate->uri.data, pxfmstate->churl_headers);
 }
 
 /*
@@ -206,8 +227,8 @@ PxfBridgeWrite(PxfFdwModifyState *pxfmstate, char *databuf, int datalen)
 
 	if (datalen > 0)
 	{
-		n = churl_write(pxfmstate->common->churl_handle, databuf, datalen);
-		elog(DEBUG5, "pxf PxfBridgeWrite: segment %d wrote %zu bytes to %s", PXF_SEGMENT_ID, n, pxfmstate->common->options->resource);
+		n = churl_write(pxfmstate->churl_handle, databuf, datalen);
+		elog(DEBUG5, "pxf PxfBridgeWrite: segment %d wrote %zu bytes to %s", PXF_SEGMENT_ID, n, pxfmstate->options->resource);
 	}
 
 	return (int) n;
@@ -243,13 +264,13 @@ BuildUriForRead(PxfFdwCommonState *common)
  * Format the URI for writing by adding PXF service endpoint details
  */
 static void
-BuildUriForWrite(PxfFdwCommonState *common)
+BuildUriForWrite(PxfFdwModifyState *pxfmstate)
 {
-	PxfOptions *options = common->options;
+	PxfOptions *options = pxfmstate->options;
 
-	resetStringInfo(&common->uri);
-	appendStringInfo(&common->uri, "http://%s:%d/%s/write", options->pxf_host, options->pxf_port, PXF_SERVICE_PREFIX);
-	elog(DEBUG2, "pxf_fdw: uri %s with file name for write: %s", common->uri.data, options->resource);
+	resetStringInfo(&pxfmstate->uri);
+	appendStringInfo(&pxfmstate->uri, "http://%s:%d/%s/write", options->pxf_host, options->pxf_port, PXF_SERVICE_PREFIX);
+	elog(DEBUG2, "pxf_fdw: uri %s with file name for write: %s", pxfmstate->uri.data, options->resource);
 }
 
 /*

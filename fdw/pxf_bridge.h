@@ -41,7 +41,6 @@ typedef struct PxfFdwCommonState
 	StringInfoData uri;
 	PxfOptions *options;
 	ResourceOwner owner;
-	bool upload;
 } PxfFdwCommonState;
 
 /*
@@ -67,10 +66,13 @@ typedef struct PxfFdwScanState
  */
 typedef struct PxfFdwModifyState
 {
-	PxfFdwCommonState *common;
 	CopyState	cstate;			/* state of writing to PXF */
 
+	CHURL_HANDLE churl_handle;	/* curl handle */
+	CHURL_HEADERS churl_headers;	/* curl headers */
+	StringInfoData uri;			/* rest endpoint URI for modify */
 	Relation	relation;
+	PxfOptions *options;		/* FDW options */
 
 #if PG_VERSION_NUM < 90600
 	Datum	   *values;			/* List of values exported for the row */
@@ -79,7 +81,8 @@ typedef struct PxfFdwModifyState
 } PxfFdwModifyState;
 
 /* Clean up churl related data structures from the context */
-void		PxfBridgeCleanup(PxfFdwCommonState *common);
+void		PxfBridgeImportCleanup(PxfFdwCommonState *common);
+void		PxfBridgeCleanup(PxfFdwModifyState *context);
 
 /* Sets up data before starting import */
 void		PxfBridgeImportStart(PxfFdwScanState *pxfsstate);

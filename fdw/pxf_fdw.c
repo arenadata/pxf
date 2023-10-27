@@ -571,7 +571,7 @@ pxfEndForeignScan(ForeignScanState *node)
 	if (pxfsstate)
 		EndCopyFrom(pxfsstate->cstate);
 
-	PxfBridgeCleanup(pxfsstate->common);
+	PxfBridgeImportCleanup(pxfsstate->common);
 	elog(DEBUG5, "pxf_fdw: pxfEndForeignScan ends on segment: %d", PXF_SEGMENT_ID);
 }
 
@@ -626,6 +626,7 @@ InitForeignModify(Relation relation)
 
 	ForeignTable *rel;
 	Oid			foreigntableid;
+	PxfOptions *options = NULL;
 	PxfFdwModifyState *pxfmstate = NULL;
 	TupleDesc	tupDesc;
 
@@ -641,15 +642,12 @@ InitForeignModify(Relation relation)
 		return NULL;
 
 	tupDesc = RelationGetDescr(relation);
-	pxfmstate = palloc0(sizeof(PxfFdwModifyState));
+	options = PxfGetOptions(foreigntableid);
+	pxfmstate = palloc(sizeof(PxfFdwModifyState));
 
-	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
-	pxfmstate->common = palloc0(sizeof(PxfFdwCommonState));
-	pxfmstate->common->options = PxfGetOptions(foreigntableid);
-	initStringInfo(&pxfmstate->common->uri);
-	MemoryContextSwitchTo(oldcontext);
-
+	initStringInfo(&pxfmstate->uri);
 	pxfmstate->relation = relation;
+	pxfmstate->options = options;
 #if PG_VERSION_NUM < 90600
 	pxfmstate->values = (Datum *) palloc(tupDesc->natts * sizeof(Datum));
 	pxfmstate->nulls = (bool *) palloc(tupDesc->natts * sizeof(bool));
@@ -762,7 +760,7 @@ FinishForeignModify(PxfFdwModifyState *pxfmstate)
 
 	EndCopyFrom(pxfmstate->cstate);
 	pxfmstate->cstate = NULL;
-	PxfBridgeCleanup(pxfmstate->common);
+	PxfBridgeCleanup(pxfmstate);
 
 }
 
@@ -869,11 +867,9 @@ InitCopyStateForModify(PxfFdwModifyState *pxfmstate)
 	List	   *copy_options;
 	CopyState	cstate;
 
-	copy_options = pxfmstate->common->options->copy_options;
+	copy_options = pxfmstate->options->copy_options;
 
-	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	PxfBridgeExportStart(pxfmstate);
-	MemoryContextSwitchTo(oldcontext);
 
 	/*
 	 * Create CopyState from FDW options.  We always acquire all columns to match the expected ScanTupleSlot signature.

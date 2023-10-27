@@ -24,6 +24,7 @@
 #include "cdb/cdbtm.h"
 #include "cdb/cdbvars.h"
 #include "access/xact.h"
+#include "utils/memutils.h"
 
 /* helper function declarations */
 static void PxfBridgeCancel(PxfFdwCommonState *common);
@@ -151,12 +152,15 @@ PxfBridgeCleanup(PxfFdwModifyState *pxfmstate)
 void
 PxfBridgeImportStart(PxfFdwScanState *pxfsstate)
 {
+	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	pxfsstate->common = palloc0(sizeof(PxfFdwCommonState));
 	pxfsstate->common->pxf_host = pstrdup(pxfsstate->options->pxf_host);
 	pxfsstate->common->pxf_port = pxfsstate->options->pxf_port;
 	pxfsstate->common->churl_headers = churl_headers_init();
+	MemoryContextSwitchTo(oldcontext);
 
 	BuildUriForRead(pxfsstate);
+	oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	BuildHttpHeaders(pxfsstate->common->churl_headers,
 					 pxfsstate->options,
 					 pxfsstate->relation,
@@ -166,6 +170,7 @@ PxfBridgeImportStart(PxfFdwScanState *pxfsstate)
 
 	pxfsstate->common->churl_handle = churl_init_download(pxfsstate->uri.data, pxfsstate->common->churl_headers);
 	pxfsstate->common->owner = CurrentResourceOwner;
+	MemoryContextSwitchTo(oldcontext);
 
 	RegisterResourceReleaseCallback(PxfBridgeAbortCallback, pxfsstate->common);
 

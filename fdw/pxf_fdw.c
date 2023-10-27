@@ -784,9 +784,7 @@ InitCopyState(PxfFdwScanState *pxfsstate)
 {
 	CopyState	cstate;
 
-	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	PxfBridgeImportStart(pxfsstate);
-	MemoryContextSwitchTo(oldcontext);
 
 	/*
 	 * Create CopyState from FDW options.  We always acquire all columns, so

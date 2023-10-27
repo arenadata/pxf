@@ -311,7 +311,7 @@ FillBuffer(PxfFdwScanState *pxfsstate, char *start, size_t size)
 
 	while (ptr < minend)
 	{
-		n = churl_read(pxfsstate->common->churl_handle, ptr, maxend - ptr);
+		n = churl_read(pxfsstate->churl_handle, ptr, maxend - ptr);
 #else
 	char	   *end = ptr + size;
 

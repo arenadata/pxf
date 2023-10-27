@@ -427,7 +427,7 @@ pxfBeginForeignScan(ForeignScanState *node, int eflags)
 	 * Save state in node->fdw_state.  We must save enough information to call
 	 * BeginCopyFrom() again.
 	 */
-	pxfsstate = palloc(sizeof(PxfFdwScanState));
+	pxfsstate = (PxfFdwScanState *) palloc(sizeof(PxfFdwScanState));
 	initStringInfo(&pxfsstate->uri);
 
 	pxfsstate->filter_str = filter_str;

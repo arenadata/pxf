@@ -54,7 +54,8 @@ gpbridge_abort_callback(ResourceReleasePhase phase,
 	}
 }
 
-static void gpbridge_cancel(gphadoop_context *context)
+static void
+gpbridge_cancel(gphadoop_context *context)
 {
 	UnregisterResourceReleaseCallback(gpbridge_abort_callback, context);
 

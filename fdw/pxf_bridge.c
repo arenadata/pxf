@@ -56,7 +56,8 @@ PxfBridgeAbortCallback(ResourceReleasePhase phase,
 	}
 }
 
-static void PxfBridgeCancel(PxfFdwCommonState *common)
+static void
+PxfBridgeCancel(PxfFdwCommonState *common)
 {
 	UnregisterResourceReleaseCallback(PxfBridgeAbortCallback, common);
 

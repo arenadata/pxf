@@ -23,6 +23,7 @@
 #include "utils/fmgroids.h"
 #include "utils/guc.h"
 #include "utils/jsonapi.h"
+#include "utils/memutils.h"
 #include "utils/resowner.h"
 
 /* include libcurl without typecheck.
@@ -158,7 +159,9 @@ churl_headers_abort_callback(ResourceReleasePhase phase,
 CHURL_HEADERS
 churl_headers_init(void)
 {
+	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	churl_settings *settings = (churl_settings *) palloc0(sizeof(churl_settings));
+	MemoryContextSwitchTo(oldcontext);
 
 	settings->owner = CurrentResourceOwner;
 	RegisterResourceReleaseCallback(churl_headers_abort_callback, settings);
@@ -582,7 +585,9 @@ churl_context_abort_callback(ResourceReleasePhase phase,
 churl_context *
 churl_new_context()
 {
+	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	churl_context *context = palloc0(sizeof(churl_context));
+	MemoryContextSwitchTo(oldcontext);
 
 	context->owner = CurrentResourceOwner;
 	RegisterResourceReleaseCallback(churl_context_abort_callback, context);

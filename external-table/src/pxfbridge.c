@@ -134,14 +134,16 @@ gpbridge_cleanup(gphadoop_context *context)
 void
 gpbridge_import_start(gphadoop_context *context)
 {
-	pxfbridge_cancel *cancel = palloc0(sizeof(pxfbridge_cancel));
 	build_uri_for_read(context);
-	cancel->churl_headers = context->churl_headers = churl_headers_init();
+	context->churl_headers = churl_headers_init();
 	add_querydata_to_http_headers(context);
 
-	cancel->churl_handle = context->churl_handle = churl_init_download(context->uri.data, context->churl_headers);
-	cancel->owner = CurrentResourceOwner;
+	context->churl_handle = churl_init_download(context->uri.data, context->churl_headers);
 
+	pxfbridge_cancel *cancel = palloc0(sizeof(pxfbridge_cancel));
+	cancel->churl_headers = context->churl_headers;
+	cancel->churl_handle = context->churl_handle;
+	cancel->owner = CurrentResourceOwner;
 	RegisterResourceReleaseCallback(gpbridge_abort_callback, cancel);
 
 	/* read some bytes to make sure the connection is established */

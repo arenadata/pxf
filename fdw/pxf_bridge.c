@@ -139,6 +139,7 @@ PxfBridgeImportStart(PxfFdwScanState *pxfsstate)
 	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	pxfsstate->churl_headers = churl_headers_init();
 	MemoryContextSwitchTo(oldcontext);
+
 	BuildUriForRead(pxfsstate);
 	BuildHttpHeaders(pxfsstate->churl_headers,
 					 pxfsstate->options,

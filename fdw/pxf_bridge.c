@@ -148,16 +148,16 @@ PxfBridgeImportStart(PxfFdwScanState *pxfsstate)
 					 pxfsstate->retrieved_attrs,
 					 pxfsstate->projectionInfo);
 
+	oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	pxfsstate->churl_handle = churl_init_download(pxfsstate->uri.data, pxfsstate->churl_headers);
 
-	oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	PxfFdwCancelState *pxfcstate = palloc0(sizeof(PxfFdwCancelState));
+	pxfcstate->pxf_host = pstrdup(pxfsstate->options->pxf_host);
+	MemoryContextSwitchTo(oldcontext);
 	pxfcstate->churl_headers = pxfsstate->churl_headers;
 	pxfcstate->churl_handle = pxfsstate->churl_handle;
 	pxfcstate->owner = CurrentResourceOwner;
-	pxfcstate->pxf_host = pstrdup(pxfsstate->options->pxf_host);
 	pxfcstate->pxf_port = pxfsstate->options->pxf_port;
-	MemoryContextSwitchTo(oldcontext);
 	RegisterResourceReleaseCallback(PxfBridgeAbortCallback, pxfcstate);
 
 	/* read some bytes to make sure the connection is established */

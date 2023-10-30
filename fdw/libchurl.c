@@ -169,7 +169,7 @@ churl_headers_init(void)
 	churl_settings *settings = (churl_settings *) palloc0(sizeof(churl_settings));
 	MemoryContextSwitchTo(oldcontext);
 
-	settings->owner = CurrentResourceOwner;
+	settings->owner = CurTransactionResourceOwner;
 	RegisterResourceReleaseCallback(churl_headers_abort_callback, settings);
 
 	return (CHURL_HEADERS) settings;
@@ -596,7 +596,7 @@ churl_new_context()
 	churl_context *context = palloc0(sizeof(churl_context));
 	MemoryContextSwitchTo(oldcontext);
 
-	context->owner = CurrentResourceOwner;
+	context->owner = CurTransactionResourceOwner;
 	RegisterResourceReleaseCallback(churl_context_abort_callback, context);
 
 	context->download_buffer = palloc0(sizeof(churl_buffer));

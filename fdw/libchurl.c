@@ -431,16 +431,16 @@ churl_init_download(const char *url, CHURL_HEADERS headers)
 	return (CHURL_HANDLE) context;
 }
 
-long
+int
 churl_get_local_port(CHURL_HANDLE handle)
 {
 	churl_context *context = (churl_context *) handle;
 
 	int curl_error;
-	long local_port;
+	long local_port = -1L;
 
 	if (CURLE_OK != (curl_error = curl_easy_getinfo(context->curl_handle, CURLINFO_LOCAL_PORT, &local_port)))
-		elog(ERROR, "internal error: curl_easy_getinfo failed(%d - %s)",
+		elog(WARNING, "internal error: curl_easy_getinfo failed(%d - %s)",
 			curl_error, curl_easy_strerror(curl_error));
 
 	return local_port;

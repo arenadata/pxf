@@ -74,16 +74,16 @@ PxfBridgeCancel(PxfFdwCancelState *pxfcstate)
 	if (!IsAbortInProgress())
 		return;
 
-	long local_port = churl_get_local_port(pxfcstate->churl_handle);
+	int local_port = churl_get_local_port(pxfcstate->churl_handle);
 
-	if (local_port == 0)
+	if (local_port <= 0)
 		return;
 
 	int savedInterruptHoldoffCount = InterruptHoldoffCount;
 
 	PG_TRY();
 	{
-		churl_headers_append(pxfcstate->churl_headers, "X-GP-CLIENT-PORT", psprintf("%li", local_port));
+		churl_headers_append(pxfcstate->churl_headers, "X-GP-CLIENT-PORT", psprintf("%i", local_port));
 
 		char *uri = BuildUriForCancel(pxfcstate);
 

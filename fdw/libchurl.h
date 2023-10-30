@@ -110,7 +110,7 @@ CHURL_HANDLE churl_init_upload_timeout(const char *url, CHURL_HEADERS headers, l
 /*
  * Returns local port of connected handle or 0
  */
-long		churl_get_local_port(CHURL_HANDLE handle);
+int			churl_get_local_port(CHURL_HANDLE handle);
 
 /*
  * Start a download to url

@@ -34,7 +34,6 @@ typedef struct
 	ResourceOwner  owner;
 } pxfbridge_cancel;
 
-
 /* helper function declarations */
 static void gpbridge_cancel(pxfbridge_cancel *cancel);
 static char *build_uri_for_cancel(pxfbridge_cancel *cancel);

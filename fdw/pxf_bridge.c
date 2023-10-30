@@ -151,7 +151,7 @@ PxfBridgeImportStart(PxfFdwScanState *pxfsstate)
 	MemoryContextSwitchTo(oldcontext);
 	pxfcstate->churl_headers = pxfsstate->churl_headers;
 	pxfcstate->churl_handle = pxfsstate->churl_handle;
-	pxfcstate->owner = CurrentResourceOwner;
+	pxfcstate->owner = CurTransactionResourceOwner;
 	pxfcstate->pxf_port = pxfsstate->options->pxf_port;
 	RegisterResourceReleaseCallback(PxfBridgeAbortCallback, pxfcstate);
 

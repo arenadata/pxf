@@ -143,7 +143,7 @@ gpbridge_import_start(gphadoop_context *context)
 	MemoryContextSwitchTo(oldcontext);
 	cancel->churl_headers = context->churl_headers;
 	cancel->churl_handle = context->churl_handle;
-	cancel->owner = CurrentResourceOwner;
+	cancel->owner = CurTransactionResourceOwner;
 	RegisterResourceReleaseCallback(gpbridge_abort_callback, cancel);
 
 	/* read some bytes to make sure the connection is established */

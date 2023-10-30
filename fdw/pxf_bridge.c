@@ -58,12 +58,7 @@ PxfBridgeAbortCallback(ResourceReleasePhase phase,
 		return;
 
 	if (pxfcstate->owner == CurrentResourceOwner)
-	{
-		if (isCommit)
-			elog(LOG, "pxf BridgeImport reference leak: %p still referenced", arg);
-
 		PxfBridgeCancel(pxfcstate);
-	}
 }
 
 static void

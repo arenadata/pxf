@@ -55,12 +55,7 @@ gpbridge_abort_callback(ResourceReleasePhase phase,
 		return;
 
 	if (cancel->owner == CurrentResourceOwner)
-	{
-		if (isCommit)
-			elog(LOG, "pxf gpbridge_import reference leak: %p still referenced", arg);
-
 		gpbridge_cancel(cancel);
-	}
 }
 
 static void

@@ -25,6 +25,7 @@
 #include "cdb/cdbvars.h"
 #include "utils/guc.h"
 #include "access/xact.h"
+#include "utils/memutils.h"
 
 typedef struct
 {
@@ -135,12 +136,16 @@ void
 gpbridge_import_start(gphadoop_context *context)
 {
 	build_uri_for_read(context);
+	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	context->churl_headers = churl_headers_init();
+	MemoryContextSwitchTo(oldcontext);
 	add_querydata_to_http_headers(context);
 
+	oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	context->churl_handle = churl_init_download(context->uri.data, context->churl_headers);
 
 	pxfbridge_cancel *cancel = palloc0(sizeof(pxfbridge_cancel));
+	MemoryContextSwitchTo(oldcontext);
 	cancel->churl_headers = context->churl_headers;
 	cancel->churl_handle = context->churl_handle;
 	cancel->owner = CurrentResourceOwner;

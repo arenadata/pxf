@@ -389,6 +389,12 @@ churl_init(const char *url, CHURL_HEADERS headers)
 }
 
 CHURL_HANDLE
+churl_init_upload(const char *url, CHURL_HEADERS headers)
+{
+	return churl_init_upload_timeout(url, headers, 0);
+}
+
+CHURL_HANDLE
 churl_init_upload_timeout(const char *url, CHURL_HEADERS headers, long timeout)
 {
 	churl_context *context = churl_init(url, headers);
@@ -405,12 +411,6 @@ churl_init_upload_timeout(const char *url, CHURL_HEADERS headers, long timeout)
 
 	setup_multi_handle(context);
 	return (CHURL_HANDLE) context;
-}
-
-CHURL_HANDLE
-churl_init_upload(const char *url, CHURL_HEADERS headers)
-{
-	return churl_init_upload_timeout(url, headers, 0);
 }
 
 CHURL_HANDLE

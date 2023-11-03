@@ -67,7 +67,7 @@ gpbridge_cancel(pxfbridge_cancel *cancel)
 
 	int local_port = churl_get_local_port(cancel->churl_handle);
 
-	if (local_port <= 0)
+	if (local_port == 0)
 		return;
 
 	int savedInterruptHoldoffCount = InterruptHoldoffCount;

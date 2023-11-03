@@ -71,7 +71,7 @@ PxfBridgeCancel(PxfFdwCancelState *pxfcstate)
 
 	int local_port = churl_get_local_port(pxfcstate->churl_handle);
 
-	if (local_port <= 0)
+	if (local_port == 0)
 		return;
 
 	int savedInterruptHoldoffCount = InterruptHoldoffCount;

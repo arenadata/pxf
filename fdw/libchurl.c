@@ -437,7 +437,7 @@ churl_get_local_port(CHURL_HANDLE handle)
 	churl_context *context = (churl_context *) handle;
 
 	int curl_error;
-	long local_port = -1L;
+	long local_port = 0;
 
 	if (CURLE_OK != (curl_error = curl_easy_getinfo(context->curl_handle, CURLINFO_LOCAL_PORT, &local_port)))
 		elog(WARNING, "internal error: curl_easy_getinfo failed(%d - %s)",

@@ -136,7 +136,10 @@ PxfBridgeCleanup(PxfFdwModifyState *pxfmstate)
 void
 PxfBridgeImportStart(PxfFdwScanState *pxfsstate)
 {
-	MemoryContext oldcontext = MemoryContextSwitchTo(CurTransactionContext);
+	MemoryContext oldcontext;
+	PxfFdwCancelState *pxfcstate;
+
+	oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	pxfsstate->churl_headers = churl_headers_init();
 	MemoryContextSwitchTo(oldcontext);
 
@@ -151,7 +154,7 @@ PxfBridgeImportStart(PxfFdwScanState *pxfsstate)
 	oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	pxfsstate->churl_handle = churl_init_download(pxfsstate->uri.data, pxfsstate->churl_headers);
 
-	PxfFdwCancelState *pxfcstate = palloc0(sizeof(PxfFdwCancelState));
+	pxfcstate = palloc0(sizeof(PxfFdwCancelState));
 	pxfcstate->pxf_host = pstrdup(pxfsstate->options->pxf_host);
 	MemoryContextSwitchTo(oldcontext);
 	pxfcstate->churl_headers = pxfsstate->churl_headers;

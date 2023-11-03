@@ -435,7 +435,6 @@ int
 churl_get_local_port(CHURL_HANDLE handle)
 {
 	churl_context *context = (churl_context *) handle;
-
 	int curl_error;
 	long local_port = 0;
 

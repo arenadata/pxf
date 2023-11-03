@@ -64,25 +64,30 @@ PxfBridgeAbortCallback(ResourceReleasePhase phase,
 static void
 PxfBridgeCancel(PxfFdwCancelState *pxfcstate)
 {
+	int local_port;
+	int savedInterruptHoldoffCount;
+
 	UnregisterResourceReleaseCallback(PxfBridgeAbortCallback, pxfcstate);
 
 	if (!IsAbortInProgress())
 		return;
 
-	int local_port = churl_get_local_port(pxfcstate->churl_handle);
+	local_port = churl_get_local_port(pxfcstate->churl_handle);
 
 	if (local_port == 0)
 		return;
 
-	int savedInterruptHoldoffCount = InterruptHoldoffCount;
+	savedInterruptHoldoffCount = InterruptHoldoffCount;
 
 	PG_TRY();
 	{
+		char *uri;
+		CHURL_HANDLE churl_handle;
+
 		churl_headers_append(pxfcstate->churl_headers, "X-GP-CLIENT-PORT", psprintf("%i", local_port));
 
-		char *uri = BuildUriForCancel(pxfcstate);
-
-		CHURL_HANDLE churl_handle = churl_init_upload_timeout(uri, pxfcstate->churl_headers, 1L);
+		uri = BuildUriForCancel(pxfcstate);
+		churl_handle = churl_init_upload_timeout(uri, pxfcstate->churl_headers, 1L);
 
 		churl_cleanup(churl_handle, false);
 	}

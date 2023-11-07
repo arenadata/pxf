@@ -139,9 +139,7 @@ PxfBridgeImportStart(PxfFdwScanState *pxfsstate)
 	MemoryContext oldcontext;
 	PxfFdwCancelState *pxfcstate;
 
-	oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	pxfsstate->churl_headers = churl_headers_init();
-	MemoryContextSwitchTo(oldcontext);
 
 	BuildUriForRead(pxfsstate);
 	BuildHttpHeaders(pxfsstate->churl_headers,
@@ -151,9 +149,9 @@ PxfBridgeImportStart(PxfFdwScanState *pxfsstate)
 					 pxfsstate->retrieved_attrs,
 					 pxfsstate->projectionInfo);
 
-	oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	pxfsstate->churl_handle = churl_init_download(pxfsstate->uri.data, pxfsstate->churl_headers);
 
+	oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	pxfcstate = palloc0(sizeof(PxfFdwCancelState));
 	pxfcstate->pxf_host = pstrdup(pxfsstate->options->pxf_host);
 	initStringInfo(&pxfcstate->uri);

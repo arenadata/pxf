@@ -138,14 +138,12 @@ gpbridge_import_start(gphadoop_context *context)
 	pxfbridge_cancel *cancel;
 
 	build_uri_for_read(context);
-	oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	context->churl_headers = churl_headers_init();
-	MemoryContextSwitchTo(oldcontext);
 	add_querydata_to_http_headers(context);
 
-	oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	context->churl_handle = churl_init_download(context->uri.data, context->churl_headers);
 
+	oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	cancel = palloc0(sizeof(pxfbridge_cancel));
 	initStringInfo(&cancel->uri);
 	MemoryContextSwitchTo(oldcontext);

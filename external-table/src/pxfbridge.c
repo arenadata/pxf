@@ -55,49 +55,59 @@ gpbridge_abort_callback(ResourceReleasePhase phase,
 		return;
 
 	if (cancel->owner == CurrentResourceOwner)
+	{
+		if (isCommit)
+			elog(LOG, "pxf gpbridge_abort reference leak: %p still referenced", arg);
+
 		gpbridge_cancel(cancel);
+	}
 }
 
 static void
 gpbridge_cancel(pxfbridge_cancel *cancel)
 {
-	int local_port;
-	int savedInterruptHoldoffCount;
+	if (cancel == NULL)
+		return;
 
 	UnregisterResourceReleaseCallback(gpbridge_abort_callback, cancel);
 
-	if (!IsAbortInProgress())
-		return;
-
-	local_port = churl_get_local_port(cancel->churl_handle);
-
-	if (local_port == 0)
-		return;
-
-	savedInterruptHoldoffCount = InterruptHoldoffCount;
-
-	PG_TRY();
+	if (IsAbortInProgress())
 	{
-		CHURL_HANDLE churl_handle;
+		int local_port = churl_get_local_port(cancel->churl_handle);
 
-		churl_headers_append(cancel->churl_headers, "X-GP-CLIENT-PORT", psprintf("%i", local_port));
-
-		build_uri_for_cancel(cancel);
-		churl_handle = churl_init_upload_timeout(cancel->uri.data, cancel->churl_headers, 1L);
-
-		churl_cleanup(churl_handle, false);
-	}
-	PG_CATCH();
-	{
-		InterruptHoldoffCount = savedInterruptHoldoffCount;
-
-		if (!elog_dismiss(WARNING))
+		if (local_port > 0)
 		{
-			FlushErrorState();
-			elog(WARNING, "unable to dismiss error");
+			int savedInterruptHoldoffCount = InterruptHoldoffCount;
+
+			PG_TRY();
+			{
+				CHURL_HANDLE churl_handle;
+
+				churl_headers_append(cancel->churl_headers, "X-GP-CLIENT-PORT", psprintf("%i", local_port));
+
+				build_uri_for_cancel(cancel);
+				churl_handle = churl_init_upload_timeout(cancel->uri.data, cancel->churl_headers, 1L);
+
+				churl_cleanup(churl_handle, false);
+			}
+			PG_CATCH();
+			{
+				InterruptHoldoffCount = savedInterruptHoldoffCount;
+
+				if (!elog_dismiss(WARNING))
+				{
+					FlushErrorState();
+					elog(WARNING, "unable to dismiss error");
+				}
+			}
+			PG_END_TRY();
 		}
 	}
-	PG_END_TRY();
+
+	if (cancel->uri.data)
+		pfree(cancel->uri.data);
+
+	pfree(cancel);
 }
 
 /*
@@ -108,6 +118,9 @@ gpbridge_cleanup(gphadoop_context *context)
 {
 	if (context == NULL)
 		return;
+
+	gpbridge_cancel(context->cancel);
+	context->cancel = NULL;
 
 	churl_cleanup(context->churl_handle, false);
 	context->churl_handle = NULL;
@@ -145,6 +158,7 @@ gpbridge_import_start(gphadoop_context *context)
 
 	oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	cancel = palloc0(sizeof(pxfbridge_cancel));
+	context->cancel = cancel;
 	initStringInfo(&cancel->uri);
 	MemoryContextSwitchTo(oldcontext);
 	cancel->churl_headers = context->churl_headers;

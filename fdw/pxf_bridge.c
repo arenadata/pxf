@@ -59,49 +59,59 @@ PxfBridgeAbortCallback(ResourceReleasePhase phase,
 		return;
 
 	if (pxfcstate->owner == CurrentResourceOwner)
+	{
+		if (isCommit)
+			elog(LOG, "pxf BridgeAbort reference leak: %p still referenced", arg);
+
 		PxfBridgeCancel(pxfcstate);
+	}
 }
 
 static void
 PxfBridgeCancel(PxfFdwCancelState *pxfcstate)
 {
-	int local_port;
-	int savedInterruptHoldoffCount;
+	if (pxfcstate == NULL)
+		return;
 
 	UnregisterResourceReleaseCallback(PxfBridgeAbortCallback, pxfcstate);
 
-	if (!IsAbortInProgress())
-		return;
-
-	local_port = churl_get_local_port(pxfcstate->churl_handle);
-
-	if (local_port == 0)
-		return;
-
-	savedInterruptHoldoffCount = InterruptHoldoffCount;
-
-	PG_TRY();
+	if (IsAbortInProgress())
 	{
-		CHURL_HANDLE churl_handle;
+		int local_port = churl_get_local_port(pxfcstate->churl_handle);
 
-		churl_headers_append(pxfcstate->churl_headers, "X-GP-CLIENT-PORT", psprintf("%i", local_port));
-
-		BuildUriForCancel(pxfcstate);
-		churl_handle = churl_init_upload_timeout(pxfcstate->uri.data, pxfcstate->churl_headers, 1L);
-
-		churl_cleanup(churl_handle, false);
-	}
-	PG_CATCH();
-	{
-		InterruptHoldoffCount = savedInterruptHoldoffCount;
-
-		if (!elog_dismiss(WARNING))
+		if (local_port > 0)
 		{
-			FlushErrorState();
-			elog(WARNING, "unable to dismiss error");
+			int savedInterruptHoldoffCount = InterruptHoldoffCount;
+
+			PG_TRY();
+			{
+				CHURL_HANDLE churl_handle;
+
+				churl_headers_append(pxfcstate->churl_headers, "X-GP-CLIENT-PORT", psprintf("%i", local_port));
+
+				BuildUriForCancel(pxfcstate);
+				churl_handle = churl_init_upload_timeout(pxfcstate->uri.data, pxfcstate->churl_headers, 1L);
+
+				churl_cleanup(churl_handle, false);
+			}
+			PG_CATCH();
+			{
+				InterruptHoldoffCount = savedInterruptHoldoffCount;
+
+				if (!elog_dismiss(WARNING))
+				{
+					FlushErrorState();
+					elog(WARNING, "unable to dismiss error");
+				}
+			}
+			PG_END_TRY();
 		}
 	}
-	PG_END_TRY();
+
+	if (pxfcstate->uri.data)
+		pfree(pxfcstate->uri.data);
+
+	pfree(pxfcstate);
 }
 
 /*
@@ -112,6 +122,9 @@ PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate)
 {
 	if (pxfsstate == NULL)
 		return;
+
+	PxfBridgeCancel(pxfsstate->pxfcstate);
+	pxfsstate->pxfcstate = NULL;
 
 	churl_cleanup(pxfsstate->churl_handle, false);
 	pxfsstate->churl_handle = NULL;
@@ -179,6 +192,7 @@ PxfBridgeImportStart(PxfFdwScanState *pxfsstate)
 
 	oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	pxfcstate = palloc0(sizeof(PxfFdwCancelState));
+	pxfsstate->pxfcstate = pxfcstate;
 	pxfcstate->pxf_host = pstrdup(pxfsstate->options->pxf_host);
 	initStringInfo(&pxfcstate->uri);
 	MemoryContextSwitchTo(oldcontext);

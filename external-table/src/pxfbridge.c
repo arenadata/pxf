@@ -32,11 +32,12 @@ typedef struct
 	CHURL_HEADERS  churl_headers;
 	CHURL_HANDLE   churl_handle;
 	ResourceOwner  owner;
+	StringInfoData uri;
 } pxfbridge_cancel;
 
 /* helper function declarations */
 static void gpbridge_cancel(pxfbridge_cancel *cancel);
-static char *build_uri_for_cancel(pxfbridge_cancel *cancel);
+static void build_uri_for_cancel(pxfbridge_cancel *cancel);
 static void build_uri_for_read(gphadoop_context *context);
 static void build_uri_for_write(gphadoop_context *context);
 static void add_querydata_to_http_headers(gphadoop_context *context);
@@ -77,13 +78,12 @@ gpbridge_cancel(pxfbridge_cancel *cancel)
 
 	PG_TRY();
 	{
-		char *uri;
 		CHURL_HANDLE churl_handle;
 
 		churl_headers_append(cancel->churl_headers, "X-GP-CLIENT-PORT", psprintf("%i", local_port));
 
-		uri = build_uri_for_cancel(cancel);
-		churl_handle = churl_init_upload_timeout(uri, cancel->churl_headers, 1L);
+		build_uri_for_cancel(cancel);
+		churl_handle = churl_init_upload_timeout(cancel->uri.data, cancel->churl_headers, 1L);
 
 		churl_cleanup(churl_handle, false);
 	}
@@ -147,6 +147,7 @@ gpbridge_import_start(gphadoop_context *context)
 	context->churl_handle = churl_init_download(context->uri.data, context->churl_headers);
 
 	cancel = palloc0(sizeof(pxfbridge_cancel));
+	initStringInfo(&cancel->uri);
 	MemoryContextSwitchTo(oldcontext);
 	cancel->churl_headers = context->churl_headers;
 	cancel->churl_handle = context->churl_handle;
@@ -213,22 +214,19 @@ gpbridge_write(gphadoop_context *context, char *databuf, int datalen)
 /*
  * Format the URI for cancel by adding PXF service endpoint details
  */
-static char *
+static void
 build_uri_for_cancel(pxfbridge_cancel *cancel)
 {
-	StringInfoData uri;
-
-	initStringInfo(&uri);
-	appendStringInfo(&uri, "http://%s/%s/cancel",
+	resetStringInfo(&cancel->uri);
+	appendStringInfo(&cancel->uri, "http://%s/%s/cancel",
 					 get_authority(), PXF_SERVICE_PREFIX);
 
 	if ((LOG >= log_min_messages) || (LOG >= client_min_messages))
 	{
-		appendStringInfo(&uri, "?trace=true");
+		appendStringInfo(&cancel->uri, "?trace=true");
 	}
 
-	elog(DEBUG2, "pxf: uri %s for cancel", uri.data);
-	return uri.data;
+	elog(DEBUG2, "pxf: uri %s for cancel", cancel->uri.data);
 }
 
 /*

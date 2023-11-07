@@ -31,13 +31,14 @@ typedef struct PxfFdwCancelState
 	CHURL_HEADERS churl_headers;
 	CHURL_HANDLE churl_handle;
 	ResourceOwner owner;
+	StringInfoData uri;
 	int			pxf_port;		/* port number for the PXF Service */
 	char	   *pxf_host;		/* hostname for the PXF Service */
 } PxfFdwCancelState;
 
 /* helper function declarations */
 static void PxfBridgeCancel(PxfFdwCancelState *pxfcstate);
-static char *BuildUriForCancel(PxfFdwCancelState *pxfcstate);
+static void BuildUriForCancel(PxfFdwCancelState *pxfcstate);
 static void BuildUriForRead(PxfFdwScanState *pxfsstate);
 static void BuildUriForWrite(PxfFdwModifyState *pxfmstate);
 #if PG_VERSION_NUM >= 90600
@@ -81,13 +82,12 @@ PxfBridgeCancel(PxfFdwCancelState *pxfcstate)
 
 	PG_TRY();
 	{
-		char *uri;
 		CHURL_HANDLE churl_handle;
 
 		churl_headers_append(pxfcstate->churl_headers, "X-GP-CLIENT-PORT", psprintf("%i", local_port));
 
-		uri = BuildUriForCancel(pxfcstate);
-		churl_handle = churl_init_upload_timeout(uri, pxfcstate->churl_headers, 1L);
+		BuildUriForCancel(pxfcstate);
+		churl_handle = churl_init_upload_timeout(pxfcstate->uri.data, pxfcstate->churl_headers, 1L);
 
 		churl_cleanup(churl_handle, false);
 	}
@@ -156,6 +156,7 @@ PxfBridgeImportStart(PxfFdwScanState *pxfsstate)
 
 	pxfcstate = palloc0(sizeof(PxfFdwCancelState));
 	pxfcstate->pxf_host = pstrdup(pxfsstate->options->pxf_host);
+	initStringInfo(&pxfcstate->uri);
 	MemoryContextSwitchTo(oldcontext);
 	pxfcstate->churl_headers = pxfsstate->churl_headers;
 	pxfcstate->churl_handle = pxfsstate->churl_handle;
@@ -235,15 +236,12 @@ PxfBridgeWrite(PxfFdwModifyState *pxfmstate, char *databuf, int datalen)
 /*
  * Format the URI for cancel by adding PXF service endpoint details
  */
-static char *
+static void
 BuildUriForCancel(PxfFdwCancelState *pxfcstate)
 {
-	StringInfoData uri;
-
-	initStringInfo(&uri);
-	appendStringInfo(&uri, "http://%s:%d/%s/cancel", pxfcstate->pxf_host, pxfcstate->pxf_port, PXF_SERVICE_PREFIX);
-	elog(DEBUG2, "pxf_fdw: uri %s for cancel", uri.data);
-	return uri.data;
+	resetStringInfo(&pxfcstate->uri);
+	appendStringInfo(&pxfcstate->uri, "http://%s:%d/%s/cancel", pxfcstate->pxf_host, pxfcstate->pxf_port, PXF_SERVICE_PREFIX);
+	elog(DEBUG2, "pxf_fdw: uri %s for cancel", pxfcstate->uri.data);
 }
 
 /*

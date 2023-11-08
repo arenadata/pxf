@@ -37,6 +37,7 @@ typedef struct
 
 /* helper function declarations */
 static void gpbridge_cancel(pxfbridge_cancel *cancel);
+static void gpbridge_cancel_cleanup(pxfbridge_cancel *cancel);
 static void build_uri_for_cancel(pxfbridge_cancel *cancel);
 static void build_uri_for_read(gphadoop_context *context);
 static void build_uri_for_write(gphadoop_context *context);
@@ -59,12 +60,45 @@ gpbridge_abort_callback(ResourceReleasePhase phase,
 		if (isCommit)
 			elog(LOG, "pxf gpbridge_abort reference leak: %p still referenced", arg);
 
-		gpbridge_cancel(cancel);
+		gpbridge_cancel_cleanup(cancel);
 	}
 }
 
 static void
 gpbridge_cancel(pxfbridge_cancel *cancel)
+{
+	int local_port = churl_get_local_port(cancel->churl_handle);
+	int savedInterruptHoldoffCount = InterruptHoldoffCount;
+
+	if (local_port == 0)
+		return;
+
+	PG_TRY();
+	{
+		CHURL_HANDLE churl_handle;
+
+		churl_headers_append(cancel->churl_headers, "X-GP-CLIENT-PORT", psprintf("%i", local_port));
+
+		build_uri_for_cancel(cancel);
+		churl_handle = churl_init_upload_timeout(cancel->uri.data, cancel->churl_headers, 1L);
+
+		churl_cleanup(churl_handle, false);
+	}
+	PG_CATCH();
+	{
+		InterruptHoldoffCount = savedInterruptHoldoffCount;
+
+		if (!elog_dismiss(WARNING))
+		{
+			FlushErrorState();
+			elog(WARNING, "unable to dismiss error");
+		}
+	}
+	PG_END_TRY();
+}
+
+static void
+gpbridge_cancel_cleanup(pxfbridge_cancel *cancel)
 {
 	if (cancel == NULL)
 		return;
@@ -72,37 +106,7 @@ gpbridge_cancel(pxfbridge_cancel *cancel)
 	UnregisterResourceReleaseCallback(gpbridge_abort_callback, cancel);
 
 	if (IsAbortInProgress())
-	{
-		int local_port = churl_get_local_port(cancel->churl_handle);
-
-		if (local_port > 0)
-		{
-			int savedInterruptHoldoffCount = InterruptHoldoffCount;
-
-			PG_TRY();
-			{
-				CHURL_HANDLE churl_handle;
-
-				churl_headers_append(cancel->churl_headers, "X-GP-CLIENT-PORT", psprintf("%i", local_port));
-
-				build_uri_for_cancel(cancel);
-				churl_handle = churl_init_upload_timeout(cancel->uri.data, cancel->churl_headers, 1L);
-
-				churl_cleanup(churl_handle, false);
-			}
-			PG_CATCH();
-			{
-				InterruptHoldoffCount = savedInterruptHoldoffCount;
-
-				if (!elog_dismiss(WARNING))
-				{
-					FlushErrorState();
-					elog(WARNING, "unable to dismiss error");
-				}
-			}
-			PG_END_TRY();
-		}
-	}
+		gpbridge_cancel(cancel);
 
 	if (cancel->uri.data)
 		pfree(cancel->uri.data);
@@ -119,7 +123,7 @@ gpbridge_cleanup(gphadoop_context *context)
 	if (context == NULL)
 		return;
 
-	gpbridge_cancel(context->cancel);
+	gpbridge_cancel_cleanup(context->cancel);
 	context->cancel = NULL;
 
 	churl_cleanup(context->churl_handle, false);

@@ -37,7 +37,6 @@ typedef struct PxfFdwCancelState
 } PxfFdwCancelState;
 
 /* helper function declarations */
-static void PxfBridgeCancel(PxfFdwCancelState *pxfcstate);
 static void PxfBridgeCancelCleanup(PxfFdwCancelState *pxfcstate);
 static void BuildUriForCancel(PxfFdwCancelState *pxfcstate);
 static void BuildUriForRead(PxfFdwScanState *pxfsstate);

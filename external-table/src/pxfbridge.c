@@ -36,7 +36,6 @@ typedef struct
 } pxfbridge_cancel;
 
 /* helper function declarations */
-static void gpbridge_cancel(pxfbridge_cancel *cancel);
 static void gpbridge_cancel_cleanup(pxfbridge_cancel *cancel);
 static void build_uri_for_cancel(pxfbridge_cancel *cancel);
 static void build_uri_for_read(gphadoop_context *context);

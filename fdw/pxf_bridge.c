@@ -114,6 +114,9 @@ PxfBridgeCancelCleanup(PxfFdwCancelState *pxfcstate)
 	if (pxfcstate->uri.data)
 		pfree(pxfcstate->uri.data);
 
+	if (pxfcstate->pxf_host)
+		pfree(pxfcstate->pxf_host);
+
 	pfree(pxfcstate);
 }
 

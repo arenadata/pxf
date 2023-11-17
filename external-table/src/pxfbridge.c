@@ -108,9 +108,6 @@ gpbridge_cancel_cleanup(pxfbridge_cancel *cancel)
 	if (IsAbortInProgress())
 		gpbridge_cancel(cancel);
 
-	if (cancel->uri.data)
-		pfree(cancel->uri.data);
-
 	pfree(cancel);
 }
 

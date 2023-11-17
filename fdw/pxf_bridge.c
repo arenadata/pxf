@@ -82,6 +82,7 @@ PxfBridgeCancel(PxfFdwCancelState *pxfcstate)
 
 		churl_headers_append(pxfcstate->churl_headers, "X-GP-CLIENT-PORT", psprintf("%i", local_port));
 
+		initStringInfo(&pxfcstate->uri);
 		BuildUriForCancel(pxfcstate);
 		churl_handle = churl_init_upload_timeout(pxfcstate->uri.data, pxfcstate->churl_headers, 1L);
 
@@ -198,10 +199,9 @@ PxfBridgeImportStart(PxfFdwScanState *pxfsstate)
 
 	oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	pxfcstate = palloc0(sizeof(PxfFdwCancelState));
-	pxfsstate->pxfcstate = pxfcstate;
 	pxfcstate->pxf_host = pstrdup(pxfsstate->options->pxf_host);
-	initStringInfo(&pxfcstate->uri);
 	MemoryContextSwitchTo(oldcontext);
+	pxfsstate->pxfcstate = pxfcstate;
 	pxfcstate->churl_headers = pxfsstate->churl_headers;
 	pxfcstate->churl_handle = pxfsstate->churl_handle;
 	pxfcstate->owner = CurTransactionResourceOwner;

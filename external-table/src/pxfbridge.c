@@ -78,6 +78,7 @@ gpbridge_cancel(pxfbridge_cancel *cancel)
 
 		churl_headers_append(cancel->churl_headers, "X-GP-CLIENT-PORT", psprintf("%i", local_port));
 
+		initStringInfo(&cancel->uri);
 		build_uri_for_cancel(cancel);
 		churl_handle = churl_init_upload_timeout(cancel->uri.data, cancel->churl_headers, 1L);
 
@@ -161,9 +162,8 @@ gpbridge_import_start(gphadoop_context *context)
 
 	oldcontext = MemoryContextSwitchTo(CurTransactionContext);
 	cancel = palloc0(sizeof(pxfbridge_cancel));
-	context->cancel = cancel;
-	initStringInfo(&cancel->uri);
 	MemoryContextSwitchTo(oldcontext);
+	context->cancel = cancel;
 	cancel->churl_headers = context->churl_headers;
 	cancel->churl_handle = context->churl_handle;
 	cancel->owner = CurTransactionResourceOwner;

@@ -239,7 +239,7 @@ public class JdbcBasePluginTest {
         configuration.set("jdbc.driver", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver");
         configuration.set("jdbc.url", "test-url");
 
-        when(mockConnectionManager.getConnection(any(), any(), any(), anyBoolean(), any(), any())).thenReturn(mockConnection);
+        when(mockConnectionManager.getConnection(any(), any(), any(), any(), anyBoolean(), any(), any())).thenReturn(mockConnection);
         when(mockConnection.getMetaData()).thenReturn(mockMetaData);
 
         JdbcBasePlugin plugin = new JdbcBasePlugin(mockConnectionManager, mockSecureLogin, mockDecryptClient);
@@ -265,7 +265,7 @@ public class JdbcBasePluginTest {
         configuration.set("jdbc.url", "test-url");
         configuration.set("jdbc.connection.transactionIsolation", "READ_UNCOMMITTED");
 
-        when(mockConnectionManager.getConnection(any(), any(), any(), anyBoolean(), any(), any())).thenReturn(mockConnection);
+        when(mockConnectionManager.getConnection(any(), any(), any(), any(), anyBoolean(), any(), any())).thenReturn(mockConnection);
         when(mockConnection.getMetaData()).thenReturn(mockMetaData);
         // READ_UNCOMMITTED is level 1
         when(mockMetaData.supportsTransactionIsolationLevel(1)).thenReturn(false);
@@ -281,7 +281,7 @@ public class JdbcBasePluginTest {
         configuration.set("jdbc.url", "test-url");
         configuration.set("jdbc.connection.transactionIsolation", "READ_COMMITTED");
 
-        when(mockConnectionManager.getConnection(any(), any(), any(), anyBoolean(), any(), any())).thenReturn(mockConnection);
+        when(mockConnectionManager.getConnection(any(), any(), any(), any(), anyBoolean(), any(), any())).thenReturn(mockConnection);
         when(mockConnection.getMetaData()).thenReturn(mockMetaData);
         // READ_COMMITTED is level 2
         when(mockMetaData.supportsTransactionIsolationLevel(2)).thenReturn(true);
@@ -298,7 +298,7 @@ public class JdbcBasePluginTest {
         configuration.set("jdbc.driver", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver");
         configuration.set("jdbc.url", "test-url");
 
-        when(mockConnectionManager.getConnection(anyString(), anyString(), any(), anyBoolean(), any(), anyString())).thenReturn(mockConnection);
+        when(mockConnectionManager.getConnection(anyString(), anyString(), anyString(), any(), anyBoolean(), any(), anyString())).thenReturn(mockConnection);
         doThrow(new SQLException("")).when(mockConnection).getMetaData();
 
         JdbcBasePlugin plugin = new JdbcBasePlugin(mockConnectionManager, mockSecureLogin, mockDecryptClient);
@@ -341,7 +341,7 @@ public class JdbcBasePluginTest {
         configuration.set("jdbc.url", "test-url");
         configuration.set("jdbc.pool.enabled", "false");
 
-        when(mockConnectionManager.getConnection(any(), any(), any(), anyBoolean(), any(), any())).thenReturn(mockConnection);
+        when(mockConnectionManager.getConnection(any(), any(), any(), any(), anyBoolean(), any(), any())).thenReturn(mockConnection);
         when(mockConnection.getMetaData()).thenReturn(mockMetaData);
 
         JdbcBasePlugin plugin = getPlugin(mockConnectionManager, mockSecureLogin, context);
@@ -349,7 +349,7 @@ public class JdbcBasePluginTest {
 
         assertSame(mockConnection, conn);
 
-        verify(mockConnectionManager).getConnection("test-server", "test-url", new Properties(), false, null, null);
+        verify(mockConnectionManager).getConnection("test-server", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver", "test-url", new Properties(), false, null, null);
     }
 
     @Test
@@ -360,7 +360,7 @@ public class JdbcBasePluginTest {
         connProps.setProperty("foo", "foo-val");
         connProps.setProperty("bar", "bar-val");
 
-        when(mockConnectionManager.getConnection("test-server", "test-url", connProps, false, null, null)).thenReturn(mockConnection);
+        when(mockConnectionManager.getConnection("test-server", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver", "test-url", connProps, false, null, null)).thenReturn(mockConnection);
         when(mockConnection.getMetaData()).thenReturn(mockMetaData);
 
         configuration.set("jdbc.driver", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver");
@@ -374,7 +374,7 @@ public class JdbcBasePluginTest {
 
         assertSame(mockConnection, conn);
 
-        verify(mockConnectionManager).getConnection("test-server", "test-url", connProps, false, null, null);
+        verify(mockConnectionManager).getConnection("test-server", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver", "test-url", connProps, false, null, null);
     }
 
     @Test
@@ -387,7 +387,7 @@ public class JdbcBasePluginTest {
         configuration.set("jdbc.connection.property.bar", "bar-val");
 
         // pool is enabled by default
-        when(mockConnectionManager.getConnection(any(), any(), any(), anyBoolean(), any(), any())).thenReturn(mockConnection);
+        when(mockConnectionManager.getConnection(any(), any(), any(), any(), anyBoolean(), any(), any())).thenReturn(mockConnection);
         when(mockConnection.getMetaData()).thenReturn(mockMetaData);
 
         JdbcBasePlugin plugin = getPlugin(mockConnectionManager, mockSecureLogin, context);
@@ -399,7 +399,7 @@ public class JdbcBasePluginTest {
         connProps.setProperty("foo", "foo-val");
         connProps.setProperty("bar", "bar-val");
 
-       verify(mockConnectionManager).getConnection("test-server", "test-url", connProps, true, poolProps, null);
+       verify(mockConnectionManager).getConnection("test-server", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver", "test-url", connProps, true, poolProps, null);
     }
 
     @Test
@@ -414,7 +414,7 @@ public class JdbcBasePluginTest {
 
         configuration.set("jdbc.pool.qualifier", "qual");
 
-        when(mockConnectionManager.getConnection(anyString(), anyString(), any(), anyBoolean(), any(), anyString())).thenReturn(mockConnection);
+        when(mockConnectionManager.getConnection(anyString(), anyString(), anyString(), any(), anyBoolean(), any(), anyString())).thenReturn(mockConnection);
         when(mockConnection.getMetaData()).thenReturn(mockMetaData);
 
         JdbcBasePlugin plugin = getPlugin(mockConnectionManager, mockSecureLogin, context);
@@ -426,7 +426,7 @@ public class JdbcBasePluginTest {
         connProps.setProperty("foo", "foo-val");
         connProps.setProperty("bar", "bar-val");
 
-        verify(mockConnectionManager).getConnection("test-server", "test-url", connProps, true, poolProps, "qual");
+        verify(mockConnectionManager).getConnection("test-server", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver", "test-url", connProps, true, poolProps, "qual");
     }
 
     @Test
@@ -442,7 +442,7 @@ public class JdbcBasePluginTest {
         configuration.set("jdbc.pool.property.xyz", "xyz-val");
         configuration.set("jdbc.pool.property.maximumPoolSize", "99"); // overwrite default
 
-        when(mockConnectionManager.getConnection(any(), any(), any(), anyBoolean(), any(), any())).thenReturn(mockConnection);
+        when(mockConnectionManager.getConnection(any(), any(), any(), any(), anyBoolean(), any(), any())).thenReturn(mockConnection);
         when(mockConnection.getMetaData()).thenReturn(mockMetaData);
 
         JdbcBasePlugin plugin = getPlugin(mockConnectionManager, mockSecureLogin, context);
@@ -458,7 +458,7 @@ public class JdbcBasePluginTest {
         poolProps.setProperty("xyz", "xyz-val");
         poolProps.setProperty("maximumPoolSize", "99");
 
-        verify(mockConnectionManager).getConnection("test-server", "test-url", connProps, true, poolProps, null);
+        verify(mockConnectionManager).getConnection("test-server", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver", "test-url", connProps, true, poolProps, null);
     }
 
     @Test
@@ -473,7 +473,7 @@ public class JdbcBasePluginTest {
         configuration.set("jdbc.pool.property.abc", "abc-val");
         configuration.set("jdbc.pool.property.xyz", "xyz-val");
 
-        when(mockConnectionManager.getConnection(any(), any(), any(), anyBoolean(), any(), any())).thenReturn(mockConnection);
+        when(mockConnectionManager.getConnection(any(), any(), any(), any(), anyBoolean(), any(), any())).thenReturn(mockConnection);
         when(mockConnection.getMetaData()).thenReturn(mockMetaData);
 
         JdbcBasePlugin plugin = getPlugin(mockConnectionManager, mockSecureLogin, context);
@@ -485,7 +485,7 @@ public class JdbcBasePluginTest {
         connProps.setProperty("foo", "foo-val");
         connProps.setProperty("bar", "bar-val");
 
-        verify(mockConnectionManager).getConnection("test-server", "test-url", connProps, false, null, null);
+        verify(mockConnectionManager).getConnection("test-server", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver", "test-url", connProps, false, null, null);
     }
 
     @Test

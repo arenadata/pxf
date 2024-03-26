@@ -5,6 +5,8 @@ import com.google.common.util.concurrent.Uninterruptibles;
 import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.HikariPoolMXBean;
 import com.zaxxer.hikari.pool.HikariProxyConnection;
+import org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver2;
+import org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver;
 import org.greenplum.pxf.plugins.jdbc.PxfJdbcProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,19 +71,19 @@ public class ConnectionManagerTest {
     @Test
     public void testGetConnectionPoolDisabled() throws SQLException {
         when(mockDriverManagerWrapper.getConnection("test-url", connProps)).thenReturn(mockConnection);
-        Connection conn = manager.getConnection("test-server", "test-url", connProps, false, null, null);
+        Connection conn = manager.getConnection("test-server", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver", "test-url", connProps, false, null, null);
         assertSame(mockConnection, conn);
     }
 
     @Test
     public void testGetConnectionPoolEnabledNoPoolProps() throws SQLException {
-        Driver mockDriver = mock(Driver.class);
+        Driver mockDriver = mock(FakeJdbcDriver.class);
         when(mockDriverManagerWrapper.getDriver("test-url")).thenReturn(mockDriver);
         when(mockDriver.connect("test-url", connProps)).thenReturn(mockConnection);
         when(mockDriver.acceptsURL("test-url")).thenReturn(true);
         DriverManager.registerDriver(mockDriver);
 
-        Driver mockDriver2 = mock(Driver.class);
+        Driver mockDriver2 = mock(FakeJdbcDriver2.class);
         when(mockDriverManagerWrapper.getDriver("test-url-2")).thenReturn(mockDriver2);
         Connection mockConnection2 = mock(Connection.class);
         when(mockDriver2.connect("test-url-2", connProps)).thenReturn(mockConnection2);
@@ -90,14 +92,14 @@ public class ConnectionManagerTest {
 
         Connection conn;
         for (int i = 0; i < 5; i++) {
-            conn = manager.getConnection("test-server", "test-url", connProps, true, poolProps, null);
+            conn = manager.getConnection("test-server", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver", "test-url", connProps, true, poolProps, null);
             assertNotNull(conn);
             assertTrue(conn instanceof HikariProxyConnection);
             assertSame(mockConnection, conn.unwrap(Connection.class));
             conn.close();
         }
 
-        Connection conn2 = manager.getConnection("test-server", "test-url-2", connProps, true, poolProps, null);
+        Connection conn2 = manager.getConnection("test-server","org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver2", "test-url-2", connProps, true, poolProps, null);
         assertNotNull(conn2);
         assertTrue(conn2 instanceof HikariProxyConnection);
         assertSame(mockConnection2, conn2.unwrap(Connection.class));
@@ -111,7 +113,7 @@ public class ConnectionManagerTest {
 
     @Test
     public void testGetConnectionPoolEnabledMaxConnOne() throws SQLException {
-        Driver mockDriver = mock(Driver.class);
+        Driver mockDriver = mock(FakeJdbcDriver.class);
         when(mockDriverManagerWrapper.getDriver("test-url")).thenReturn(mockDriver);
         when(mockDriver.connect("test-url", connProps)).thenReturn(mockConnection);
         when(mockDriver.acceptsURL("test-url")).thenReturn(true);
@@ -121,10 +123,10 @@ public class ConnectionManagerTest {
         poolProps.setProperty("connectionTimeout", "250");
 
         // get connection, do not close it
-        manager.getConnection("test-server", "test-url", connProps, true, poolProps, null);
+        manager.getConnection("test-server", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver", "test-url", connProps, true, poolProps, null);
         // ask for connection again, it should time out
         Exception ex = assertThrows(SQLTransientConnectionException.class,
-                () -> manager.getConnection("test-server", "test-url", connProps, true, poolProps, null));
+                () -> manager.getConnection("test-server", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver", "test-url", connProps, true, poolProps, null));
         assertTrue(ex.getMessage().contains(" - Connection is not available, request timed out after "));
 
         DriverManager.deregisterDriver(mockDriver);
@@ -132,7 +134,7 @@ public class ConnectionManagerTest {
 
     @Test
     public void testGetConnectionPoolEnabledWithPoolProps() throws SQLException {
-        Driver mockDriver = mock(Driver.class);
+        Driver mockDriver = mock(FakeJdbcDriver.class);
         when(mockDriverManagerWrapper.getDriver("test-url")).thenReturn(mockDriver);
         when(mockDriver.connect(anyString(), any())).thenReturn(mockConnection);
         when(mockDriver.acceptsURL("test-url")).thenReturn(true);
@@ -147,7 +149,7 @@ public class ConnectionManagerTest {
         poolProps.setProperty("dataSource.foo", "123");
 
         // get connection, do not close it
-        Connection conn = manager.getConnection("test-server", "test-url", connProps, true, poolProps, null);
+        Connection conn = manager.getConnection("test-server", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver", "test-url", connProps, true, poolProps, null);
         assertNotNull(conn);
 
         // make sure all connProps and "dataSource.foo" from poolProps are passed to the DriverManager
@@ -171,7 +173,7 @@ public class ConnectionManagerTest {
         when(mockMBean.getActiveConnections()).thenReturn(0);
         manager = new ConnectionManager(mockFactory, ticker, properties, mockDriverManagerWrapper);
 
-        manager.getConnection("test-server", "test-url", connProps, true, poolProps, null);
+        manager.getConnection("test-server", "test-driver", "test-url", connProps, true, poolProps, null);
 
         ticker.advanceTime(connection.getPoolExpirationTimeout().toHours() + 1, TimeUnit.HOURS);
         manager.cleanCache();
@@ -197,7 +199,7 @@ public class ConnectionManagerTest {
         connection.setCleanupSleepInterval(Duration.ofMillis(50));
         manager = new ConnectionManager(mockFactory, ticker, properties, mockDriverManagerWrapper);
 
-        manager.getConnection("test-server", "test-url", connProps, true, poolProps, null);
+        manager.getConnection("test-server", "test-driver", "test-url", connProps, true, poolProps, null);
 
         ticker.advanceTime(connection.getPoolExpirationTimeout().toHours() + 1, TimeUnit.HOURS);
         manager.cleanCache();
@@ -223,7 +225,7 @@ public class ConnectionManagerTest {
         connection.setCleanupSleepInterval(Duration.ofMillis(50));
         manager = new ConnectionManager(mockFactory, ticker, properties, mockDriverManagerWrapper);
 
-        manager.getConnection("test-server", "test-url", connProps, true, poolProps, null);
+        manager.getConnection("test-server", "test-driver", "test-url", connProps, true, poolProps, null);
 
         ticker.advanceTime(connection.getPoolExpirationTimeout().toHours() + 1, TimeUnit.HOURS);
         manager.cleanCache();

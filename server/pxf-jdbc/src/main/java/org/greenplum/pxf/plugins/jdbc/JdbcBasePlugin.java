@@ -126,6 +126,7 @@ public class JdbcBasePlugin extends BasePlugin implements Reloader {
     }
 
     // JDBC parameters from config file or specified in DDL
+    private String jdbcDriver;
 
     private String jdbcUrl;
 
@@ -208,7 +209,7 @@ public class JdbcBasePlugin extends BasePlugin implements Reloader {
     @Override
     public void afterPropertiesSet() {
         // Required parameter. Can be auto-overwritten by user options
-        String jdbcDriver = configuration.get(JDBC_DRIVER_PROPERTY_NAME);
+        jdbcDriver = configuration.get(JDBC_DRIVER_PROPERTY_NAME);
         assertMandatoryParameter(jdbcDriver, JDBC_DRIVER_PROPERTY_NAME, JDBC_DRIVER_OPTION_NAME);
         try {
             LOG.debug("JDBC driver: '{}'", jdbcDriver);
@@ -528,9 +529,9 @@ public class JdbcBasePlugin extends BasePlugin implements Reloader {
         Configuration configuration = context.getConfiguration();
         if (Utilities.isSecurityEnabled(configuration) && StringUtils.startsWith(jdbcUrl, HIVE_URL_PREFIX)) {
             return secureLogin.getLoginUser(context, configuration).doAs((PrivilegedExceptionAction<Connection>) () ->
-                    connectionManager.getConnection(context.getServerName(), jdbcUrl, connectionConfiguration, isConnectionPoolUsed, poolConfiguration, poolQualifier));
+                    connectionManager.getConnection(context.getServerName(), jdbcDriver, jdbcUrl, connectionConfiguration, isConnectionPoolUsed, poolConfiguration, poolQualifier));
         } else {
-            return connectionManager.getConnection(context.getServerName(), jdbcUrl, connectionConfiguration, isConnectionPoolUsed, poolConfiguration, poolQualifier);
+            return connectionManager.getConnection(context.getServerName(), jdbcDriver, jdbcUrl, connectionConfiguration, isConnectionPoolUsed, poolConfiguration, poolQualifier);
         }
     }
 

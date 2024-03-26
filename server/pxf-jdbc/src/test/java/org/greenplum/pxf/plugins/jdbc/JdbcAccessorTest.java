@@ -321,7 +321,7 @@ public class JdbcAccessorTest {
     }
 
     private void wireMocksForRead() throws SQLException {
-        when(mockConnectionManager.getConnection(any(), any(), any(), anyBoolean(), any(), any())).thenReturn(mockConnection);
+        when(mockConnectionManager.getConnection(any(), any(), any(), any(), anyBoolean(), any(), any())).thenReturn(mockConnection);
         when(mockConnection.getMetaData()).thenReturn(mockMetaData);
     }
 }

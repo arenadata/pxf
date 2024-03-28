@@ -116,6 +116,7 @@ public class ConnectionManager {
      * connections.
      *
      * @param server                  configuration server
+     * @param jdbcDriverClassName     JDBC driver class of the target database
      * @param jdbcUrl                 JDBC url of the target database
      * @param connectionConfiguration connection configuration properties
      * @param isPoolEnabled           true if the connection pool is enabled, false otherwise
@@ -123,7 +124,7 @@ public class ConnectionManager {
      * @return connection instance
      * @throws SQLException if connection can not be obtained
      */
-    public Connection getConnection(String server, String jdbcUrl, Properties connectionConfiguration, boolean isPoolEnabled, Properties poolConfiguration, String qualifier) throws SQLException {
+    public Connection getConnection(String server, String jdbcDriverClassName, String jdbcUrl, Properties connectionConfiguration, boolean isPoolEnabled, Properties poolConfiguration, String qualifier) throws SQLException {
 
         Connection result;
         if (!isPoolEnabled) {
@@ -131,7 +132,7 @@ public class ConnectionManager {
             result = driverManagerWrapper.getConnection(jdbcUrl, connectionConfiguration);
         } else {
 
-            PoolDescriptor poolDescriptor = new PoolDescriptor(server, jdbcUrl, connectionConfiguration, poolConfiguration, qualifier);
+            PoolDescriptor poolDescriptor = new PoolDescriptor(server, jdbcDriverClassName, jdbcUrl, connectionConfiguration, poolConfiguration, qualifier);
 
             DataSource dataSource;
             try {
@@ -197,7 +198,8 @@ public class ConnectionManager {
             Properties configProperties = poolDescriptor.getPoolConfig() != null ? poolDescriptor.getPoolConfig() : new Properties();
             HikariConfig config = new HikariConfig(configProperties);
 
-            // overwrite jdbcUrl / userName / password with the values provided explicitly
+            // overwrite driver / jdbcUrl / userName / password with the values provided explicitly
+            config.setDriverClassName(poolDescriptor.getJdbcDriverClassName());
             config.setJdbcUrl(poolDescriptor.getJdbcUrl());
             config.setUsername(poolDescriptor.getUser());
             config.setPassword(poolDescriptor.getPassword());

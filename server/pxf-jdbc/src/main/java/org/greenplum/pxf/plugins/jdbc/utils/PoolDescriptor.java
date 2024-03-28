@@ -14,9 +14,10 @@ public class PoolDescriptor {
     // have users define connection properties in jdbc-site.xml with jdbc. prefix
     // prohibit redefining these properties at the pool level
     private static final Set<String> PROHIBITED_PROPERTIES =
-            Sets.newHashSet("username", "password", "dataSource.user", "dataSource.password", "dataSourceClassName", "jdbcUrl");
+            Sets.newHashSet("username", "password", "dataSource.user", "dataSource.password", "dataSourceClassName", "jdbcUrl", "jdbcDriverClassName");
 
     private String server;
+    private String jdbcDriverClassName;
     private String jdbcUrl;
     private String user;
     private String password;
@@ -24,8 +25,9 @@ public class PoolDescriptor {
     private String qualifier;
 
 
-    public PoolDescriptor(String server, String jdbcUrl, Properties connectionConfig, Properties poolConfig, String qualifier) {
+    public PoolDescriptor(String server, String jdbcDriverClassName, String jdbcUrl, Properties connectionConfig, Properties poolConfig, String qualifier) {
         this.server = server;
+        this.jdbcDriverClassName = jdbcDriverClassName;
         this.jdbcUrl = jdbcUrl;
 
         if (connectionConfig != null) {
@@ -44,6 +46,10 @@ public class PoolDescriptor {
 
     public String getServer() {
         return server;
+    }
+
+    public String getJdbcDriverClassName() {
+        return jdbcDriverClassName;
     }
 
     public String getJdbcUrl() {
@@ -73,6 +79,7 @@ public class PoolDescriptor {
         if (o == null || getClass() != o.getClass()) return false;
         PoolDescriptor that = (PoolDescriptor) o;
         return Objects.equals(server, that.server) &&
+                Objects.equals(jdbcDriverClassName, that.jdbcDriverClassName) &&
                 Objects.equals(jdbcUrl, that.jdbcUrl) &&
                 Objects.equals(user, that.user) &&
                 Objects.equals(password, that.password) &&
@@ -83,7 +90,7 @@ public class PoolDescriptor {
 
     @Override
     public int hashCode() {
-        return Objects.hash(server, jdbcUrl, user, password, connectionConfig, poolConfig, qualifier);
+        return Objects.hash(server, jdbcDriverClassName, jdbcUrl, user, password, connectionConfig, poolConfig, qualifier);
     }
 
 
@@ -91,6 +98,7 @@ public class PoolDescriptor {
     public String toString() {
         return "PoolDescriptor{" +
                 "server=" + server +
+                ", jdbcDriverClassName=" + jdbcDriverClassName +
                 ", jdbcUrl=" + jdbcUrl +
                 ", user=" + user +
                 ", password=" + ConnectionManager.maskPassword(password) +

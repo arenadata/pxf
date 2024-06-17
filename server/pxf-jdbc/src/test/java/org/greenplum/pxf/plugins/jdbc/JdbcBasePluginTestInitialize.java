@@ -56,7 +56,7 @@ import static org.mockito.Mockito.mock;
 public class JdbcBasePluginTestInitialize {
 
     private static final String DATA_SOURCE = "t";
-    private static final String JDBC_DRIVER = "java.lang.Object";  // we cannot mock Class.forName()
+    private static final String JDBC_DRIVER = "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver";  // we cannot mock Class.forName()
     private static final String JDBC_URL = "jdbc:postgresql://localhost/postgres";
     private static final List<ColumnDescriptor> COLUMNS;
 
@@ -151,6 +151,44 @@ public class JdbcBasePluginTestInitialize {
         assertNull(getInternalState(plugin, "quoteColumns"));
         assertEquals(getInternalState(plugin, "DEFAULT_FETCH_SIZE"), getInternalState(plugin, "fetchSize"));
         assertNull(getInternalState(plugin, "queryTimeout"));
+    }
+
+    @Test
+    public void testInvalidDriverSettings() {
+        // Configuration
+        Configuration configuration = new Configuration();
+        configuration.set("jdbc.url", JDBC_URL);
+
+        // Context
+        RequestContext context = makeContext(configuration);
+
+        // Initialize plugin
+        plugin.setRequestContext(context);
+
+        // Checks
+        configuration.set("jdbc.driver", "UnknownClass");
+        RuntimeException exception1 = assertThrows(RuntimeException.class,
+                () -> plugin.afterPropertiesSet()
+        );
+        assertEquals(ClassNotFoundException.class, exception1.getCause().getClass());
+        assertEquals("UnknownClass", exception1.getCause().getMessage());
+
+        configuration.set("jdbc.driver", "java.lang.Object");
+        IllegalArgumentException exception2 = assertThrows(IllegalArgumentException.class,
+                () -> plugin.afterPropertiesSet()
+        );
+        assertEquals("The specified JDBC driver class [java.lang.Object] does not implement java.sql.Driver",
+                exception2.getMessage()
+        );
+
+        configuration.set("jdbc.driver", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver2");
+        IllegalArgumentException exception3 = assertThrows(IllegalArgumentException.class,
+                () -> plugin.afterPropertiesSet()
+        );
+        assertEquals("The specified JDBC driver [org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver2] " +
+                             "is not registered in DriverManager",
+                exception3.getMessage()
+        );
     }
 
     @Test

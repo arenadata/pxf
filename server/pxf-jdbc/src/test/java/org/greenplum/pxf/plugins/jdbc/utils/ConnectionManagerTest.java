@@ -77,11 +77,10 @@ public class ConnectionManagerTest {
 
     @Test
     public void testGetConnectionPoolEnabledNoPoolProps() throws SQLException {
-        Driver mockDriver = mock(FakeJdbcDriver.class);
+        Driver mockDriver = FakeJdbcDriver.getMockDriver();
         when(mockDriverManagerWrapper.getDriver("test-url")).thenReturn(mockDriver);
         when(mockDriver.connect("test-url", connProps)).thenReturn(mockConnection);
         when(mockDriver.acceptsURL("test-url")).thenReturn(true);
-        DriverManager.registerDriver(mockDriver);
 
         Driver mockDriver2 = mock(FakeJdbcDriver2.class);
         when(mockDriverManagerWrapper.getDriver("test-url-2")).thenReturn(mockDriver2);
@@ -113,11 +112,10 @@ public class ConnectionManagerTest {
 
     @Test
     public void testGetConnectionPoolEnabledMaxConnOne() throws SQLException {
-        Driver mockDriver = mock(FakeJdbcDriver.class);
+        Driver mockDriver = FakeJdbcDriver.getMockDriver();
         when(mockDriverManagerWrapper.getDriver("test-url")).thenReturn(mockDriver);
         when(mockDriver.connect("test-url", connProps)).thenReturn(mockConnection);
         when(mockDriver.acceptsURL("test-url")).thenReturn(true);
-        DriverManager.registerDriver(mockDriver);
 
         poolProps.setProperty("maximumPoolSize", "1");
         poolProps.setProperty("connectionTimeout", "250");
@@ -134,11 +132,10 @@ public class ConnectionManagerTest {
 
     @Test
     public void testGetConnectionPoolEnabledWithPoolProps() throws SQLException {
-        Driver mockDriver = mock(FakeJdbcDriver.class);
+        Driver mockDriver = FakeJdbcDriver.getMockDriver();
         when(mockDriverManagerWrapper.getDriver("test-url")).thenReturn(mockDriver);
         when(mockDriver.connect(anyString(), any())).thenReturn(mockConnection);
         when(mockDriver.acceptsURL("test-url")).thenReturn(true);
-        DriverManager.registerDriver(mockDriver);
 
         connProps.setProperty("user", "foo");
         connProps.setProperty("password", "foo-password");

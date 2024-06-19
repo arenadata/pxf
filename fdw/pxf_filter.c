@@ -42,11 +42,12 @@ static bool SupportedOperatorTypeScalarArrayOpExpr(Oid type,
 												   PxfFilterDesc *filter,
 												   bool useOr);
 static void ScalarConstToStr(Const *constval, StringInfo buf);
-static void ListConstToStr(Const *constval, StringInfo buf);
+static void ListConstToStr(Const *constval, StringInfo buf, bool with_nulls);
 static List *AppendAttrFromVar(Var *var, List *attrs);
 static void AddExtraAndExpressionItems(List *expressionItems,
 									   int extraAndOperatorsNum);
 static List *GetAttrsFromExpr(Expr *expr, bool *expressionIsSupported);
+static bool SupportedArrayType(Oid type);
 
 /*
  * All supported operators and their PXF operator codes.
@@ -192,6 +193,10 @@ dbop_pxfop_map pxf_supported_opr_op_expr[] =
 	{1755 /* numericle */ , PXFOP_LE},
 	{1757 /* numericge */ , PXFOP_GE},
 	{1753 /* numericne */ , PXFOP_NE},
+
+	/* generic array comparison operators */
+	{ARRAY_EQ_OP /* array_eq */, PXFOP_EQ},
+	{1071 /*array_ne */, PXFOP_NE},
 };
 
 dbop_pxfop_array_map pxf_supported_opr_scalar_array_op_expr[] =
@@ -249,7 +254,17 @@ dbop_pxfop_array_map pxf_supported_opr_scalar_array_op_expr[] =
 	/* bpchar */
 	{BPCharEqualOperator /* bpchareq */ , PXFOP_IN,
 	true},
+
+	{BooleanEqualOperator /* booleq */ , PXFOP_IN, true},
 };
+
+
+/*
+ * In GPDB 6 the following array macros are not defined.
+ */
+#ifndef BOOLARRAYOID
+#define BOOLARRAYOID 1000
+#endif
 
 Oid			pxf_supported_types[] =
 {
@@ -270,7 +285,17 @@ Oid			pxf_supported_types[] =
 	INT2ARRAYOID,
 	INT4ARRAYOID,
 	INT8ARRAYOID,
-	TEXTARRAYOID
+	TEXTARRAYOID,
+	BOOLARRAYOID,
+};
+
+static Oid		pxf_supported_array_types[] =
+{
+	INT2ARRAYOID,
+	INT4ARRAYOID,
+	INT8ARRAYOID,
+	TEXTARRAYOID,
+	BOOLARRAYOID,
 };
 
 static void
@@ -613,6 +638,22 @@ PxfSerializeFilterList(List *filters)
 											 r.attnum - 1); /* Java attrs are
 															 * 0-based */
 						}
+						else if (pxfoperand_is_attr(l) && pxfoperand_is_list_const(r))
+						{
+							appendStringInfo(resbuf, "%c%d%c%d%s",
+											 PXF_ATTR_CODE, l.attnum - 1,	/* Java attrs are
+																			 * 0-based */
+											 PXF_LIST_CONST_CODE, r.consttype,
+											 r.conststr->data);
+						}
+						else if (pxfoperand_is_list_const(l) && pxfoperand_is_attr(r))
+						{
+							appendStringInfo(resbuf, "%c%d%s%c%d",
+											 PXF_LIST_CONST_CODE, l.consttype,
+											 l.conststr->data,
+											 PXF_ATTR_CODE, r.attnum - 1);	/* Java attrs are
+																			 * 0-based */
+						}
 						else
 						{
 							/*
@@ -862,19 +903,40 @@ OpExprToPxfFilter(OpExpr *expr, PxfFilterDesc *filter)
 		if (filter->l.attnum <= InvalidAttrNumber)
 			return false;		/* system attr not supported */
 
-		filter->r.opcode = PXF_SCALAR_CONST_CODE;
 		filter->r.attnum = InvalidAttrNumber;
 		filter->r.conststr = makeStringInfo();
-		ScalarConstToStr((Const *) rightop, filter->r.conststr);
 		filter->r.consttype = ((Const *) rightop)->consttype;
+
+		/*
+		 * If we faced the generic array comparison operator, represent
+		 * the array through list const.
+		 */
+		if (SupportedArrayType(rightop_type))
+		{
+			filter->r.opcode = PXF_LIST_CONST_CODE;
+			ListConstToStr((Const *) rightop, filter->r.conststr, true);
+		}
+		else
+		{
+			filter->r.opcode = PXF_SCALAR_CONST_CODE;
+			ScalarConstToStr((Const *) rightop, filter->r.conststr);
+		}
 	}
 	else if (IsA(leftop, Const) && IsA(rightop, Var))
 	{
-		filter->l.opcode = PXF_SCALAR_CONST_CODE;
 		filter->l.attnum = InvalidAttrNumber;
 		filter->l.conststr = makeStringInfo();
-		ScalarConstToStr((Const *) leftop, filter->l.conststr);
 		filter->l.consttype = ((Const *) leftop)->consttype;
+		if (SupportedArrayType(leftop_type))
+		{
+			filter->l.opcode = PXF_LIST_CONST_CODE;
+			ListConstToStr((Const *) leftop, filter->l.conststr, true);
+		}
+		else
+		{
+			filter->l.opcode = PXF_SCALAR_CONST_CODE;
+			ScalarConstToStr((Const *) leftop, filter->l.conststr);
+		}
 
 		filter->r.opcode = PXF_ATTR_CODE;
 		filter->r.attnum = ((Var *) rightop)->varattno;
@@ -928,7 +990,7 @@ ScalarArrayOpExprToPxfFilter(ScalarArrayOpExpr *expr, PxfFilterDesc *filter)
 		filter->r.opcode = PXF_LIST_CONST_CODE;
 		filter->r.attnum = InvalidAttrNumber;
 		filter->r.conststr = makeStringInfo();
-		ListConstToStr((Const *) rightop, filter->r.conststr);
+		ListConstToStr((Const *) rightop, filter->r.conststr, false);
 		filter->r.consttype = ((Const *) rightop)->consttype;
 	}
 	else if (IsA(leftop, Const) &&IsA(rightop, Var))
@@ -936,7 +998,7 @@ ScalarArrayOpExprToPxfFilter(ScalarArrayOpExpr *expr, PxfFilterDesc *filter)
 		filter->l.opcode = PXF_LIST_CONST_CODE;
 		filter->l.attnum = InvalidAttrNumber;
 		filter->l.conststr = makeStringInfo();
-		ListConstToStr((Const *) leftop, filter->l.conststr);
+		ListConstToStr((Const *) leftop, filter->l.conststr, false);
 		filter->l.consttype = ((Const *) leftop)->consttype;
 
 		filter->r.opcode = PXF_ATTR_CODE;
@@ -1169,6 +1231,32 @@ SupportedFilterType(Oid type)
 	return false;
 }
 
+/*
+* SupportedArrayType
+*
+* Return true if the array type is supported by pxf_filter.
+* Supported defines are defined in pxf_supported_array_types.
+*/
+static bool
+SupportedArrayType(Oid type)
+{
+	int			nargs = sizeof(pxf_supported_array_types) / sizeof(Oid);
+	int			i;
+
+	/* is type supported? */
+	for (i = 0; i < nargs; i++)
+	{
+		if (type == pxf_supported_array_types[i])
+			return true;
+	}
+
+	elog(DEBUG1,
+		 "SupportedArrayType: filter pushdown is not supported for datatype oid: %d",
+		 type);
+
+	return false;
+}
+
 static bool
 SupportedOperatorTypeOpExpr(Oid type, PxfFilterDesc *filter)
 {
@@ -1281,14 +1369,13 @@ ScalarConstToStr(Const *constval, StringInfo buf)
 * ListConstToStr
 *
 * Extracts the value stored in a list constant to a string.
-* Currently supported data types: int2[], int4[], int8[], text[]
 * Example:
 * Input: ['abc', 'xyz']
 * Output: s3dabcs3dxyz
 *
 */
 static void
-ListConstToStr(Const *constval, StringInfo buf)
+ListConstToStr(Const *constval, StringInfo buf, bool with_nulls)
 {
 	if (constval->constisnull)
 	{
@@ -1309,6 +1396,7 @@ ListConstToStr(Const *constval, StringInfo buf)
 		case INT4ARRAYOID:
 		case INT8ARRAYOID:
 		case TEXTARRAYOID:
+		case BOOLARRAYOID:
 			{
 				StringInfo	interm_buf;
 				Datum	   *dats;
@@ -1319,6 +1407,7 @@ ListConstToStr(Const *constval, StringInfo buf)
 				int16		elmlen;
 				bool		elmbyval;
 				char		elmalign;
+				bool	   *elem_nulls = NULL;
 
 				arr = DatumGetArrayTypeP(constval->constvalue);
 
@@ -1334,22 +1423,36 @@ ListConstToStr(Const *constval, StringInfo buf)
 								  elmbyval,
 								  elmalign,
 								  &dats,
-								  NULL,
+								  with_nulls ? &elem_nulls : NULL,
 								  &len);
 
 				getTypeOutputInfo(ARR_ELEMTYPE(arr), &typoutput, &typIsVarlena);
 
 				for (int i = 0; i < len; i++)
 				{
-					char *extval = OidOutputFunctionCall(typoutput, dats[i]);
+					char *extval = NullConstValue;
 
-					appendStringInfo(interm_buf, "%s", extval);
+					if (!with_nulls || !elem_nulls[i])
+						extval = OidOutputFunctionCall(typoutput, dats[i]);
+
+					if (ARR_ELEMTYPE(arr) == BOOLOID){
+						if (*extval == 't')
+							appendStringInfo(interm_buf, "%s", TrueConstValue);
+						else if (*extval == 'f')
+							appendStringInfo(interm_buf, "%s", FalseConstValue);
+						else
+							appendStringInfo(interm_buf, "%s", NullConstValue);
+					}
+					else
+						appendStringInfo(interm_buf, "%s", extval);
 
 					appendStringInfo(buf, "%c%d%c%s",
 									 PXF_SIZE_BYTES, interm_buf->len,
 									 PXF_CONST_DATA, interm_buf->data);
 					resetStringInfo(interm_buf);
-					pfree(extval);
+
+					if (!with_nulls || !elem_nulls[i])
+						pfree(extval);
 				}
 				pfree(interm_buf->data);
 				break;

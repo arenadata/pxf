@@ -1196,11 +1196,6 @@ scalar_const_to_str(Const *constval, StringInfo buf)
 static void
 list_const_to_str(Const *constval, StringInfo buf)
 {
-	StringInfo	interm_buf;
-	Datum	   *dats;
-	ArrayType  *arr;
-	int			len;
-
 	if (constval->constisnull)
 	{
 		elog(DEBUG1, "Null constant is not expected in this context.");
@@ -1213,10 +1208,6 @@ list_const_to_str(Const *constval, StringInfo buf)
 		return;
 	}
 
-	arr = DatumGetArrayTypeP(constval->constvalue);
-
-	interm_buf = makeStringInfo();
-
 	switch (constval->consttype)
 	{
 		case INT2ARRAYOID:
@@ -1224,11 +1215,19 @@ list_const_to_str(Const *constval, StringInfo buf)
 		case INT8ARRAYOID:
 		case TEXTARRAYOID:
 			{
+				StringInfo	interm_buf;
+				Datum	   *dats;
+				ArrayType  *arr;
+				int			len;
 				Oid			typoutput;
 				bool		typIsVarlena;
 				int16		elmlen;
 				bool		elmbyval;
 				char		elmalign;
+
+				arr = DatumGetArrayTypeP(constval->constvalue);
+
+				interm_buf = makeStringInfo();
 				/*
 				 * Get necessary data for deconstruct_array() and output function
 				 * from the catalog.
@@ -1257,6 +1256,7 @@ list_const_to_str(Const *constval, StringInfo buf)
 					resetStringInfo(interm_buf);
 					pfree(extval);
 				}
+				pfree(interm_buf->data);
 				break;
 			}
 		default:
@@ -1267,8 +1267,6 @@ list_const_to_str(Const *constval, StringInfo buf)
 				 constval->consttype);
 
 	}
-
-	pfree(interm_buf->data);
 }
 
 /*

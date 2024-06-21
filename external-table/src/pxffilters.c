@@ -1222,22 +1222,6 @@ list_const_to_str(Const *constval, StringInfo buf)
 
 	interm_buf = makeStringInfo();
 
-	/*
-	 * Get necessary data for deconstruct_array() and output function
-	 * from the catalog.
-	 */
-	get_typlenbyvalalign(ARR_ELEMTYPE(arr), &elmlen, &elmbyval, &elmalign);
-	deconstruct_array(arr,
-					  ARR_ELEMTYPE(arr),
-					  elmlen,
-					  elmbyval,
-					  elmalign,
-					  &dats,
-					  NULL,
-					  &len);
-
-	getTypeOutputInfo(ARR_ELEMTYPE(arr), &typoutput, &typIsVarlena);
-
 	switch (constval->consttype)
 	{
 		case INT2ARRAYOID:
@@ -1245,6 +1229,22 @@ list_const_to_str(Const *constval, StringInfo buf)
 		case INT8ARRAYOID:
 		case TEXTARRAYOID:
 			{
+				/*
+				 * Get necessary data for deconstruct_array() and output function
+				 * from the catalog.
+				 */
+				get_typlenbyvalalign(ARR_ELEMTYPE(arr), &elmlen, &elmbyval, &elmalign);
+				deconstruct_array(arr,
+								  ARR_ELEMTYPE(arr),
+								  elmlen,
+								  elmbyval,
+								  elmalign,
+								  &dats,
+								  NULL,
+								  &len);
+
+				getTypeOutputInfo(ARR_ELEMTYPE(arr), &typoutput, &typIsVarlena);
+
 				for (int i = 0; i < len; i++)
 				{
 					char *extval = OidOutputFunctionCall(typoutput, dats[i]);
@@ -1265,6 +1265,7 @@ list_const_to_str(Const *constval, StringInfo buf)
 				 "internal error in pxffilters.c:list_const_to_str. "
 				 "Using unsupported data type (%d)",
 				 constval->consttype);
+
 	}
 
 	pfree(interm_buf->data);

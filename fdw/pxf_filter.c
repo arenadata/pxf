@@ -1294,11 +1294,6 @@ ListConstToStr(Const *constval, StringInfo buf)
 	Datum	   *dats;
 	ArrayType  *arr;
 	int			len;
-	Oid			typoutput;
-	bool		typIsVarlena;
-	int16		elmlen;
-	bool		elmbyval;
-	char		elmalign;
 
 	if (constval->constisnull)
 	{
@@ -1317,22 +1312,6 @@ ListConstToStr(Const *constval, StringInfo buf)
 
 	interm_buf = makeStringInfo();
 
-	/*
-	 * Get necessary data for deconstruct_array() and out function
-	 * from the catalog.
-	 */
-	get_typlenbyvalalign(ARR_ELEMTYPE(arr), &elmlen, &elmbyval, &elmalign);
-	deconstruct_array(arr,
-					  ARR_ELEMTYPE(arr),
-					  elmlen,
-					  elmbyval,
-					  elmalign,
-					  &dats,
-					  NULL,
-					  &len);
-
-	getTypeOutputInfo(ARR_ELEMTYPE(arr), &typoutput, &typIsVarlena);
-
 	switch (constval->consttype)
 	{
 		case INT2ARRAYOID:
@@ -1340,6 +1319,27 @@ ListConstToStr(Const *constval, StringInfo buf)
 		case INT8ARRAYOID:
 		case TEXTARRAYOID:
 			{
+				Oid			typoutput;
+				bool		typIsVarlena;
+				int16		elmlen;
+				bool		elmbyval;
+				char		elmalign;
+				/*
+				 * Get necessary data for deconstruct_array() and out function
+				 * from the catalog.
+				 */
+				get_typlenbyvalalign(ARR_ELEMTYPE(arr), &elmlen, &elmbyval, &elmalign);
+				deconstruct_array(arr,
+								  ARR_ELEMTYPE(arr),
+								  elmlen,
+								  elmbyval,
+								  elmalign,
+								  &dats,
+								  NULL,
+								  &len);
+
+				getTypeOutputInfo(ARR_ELEMTYPE(arr), &typoutput, &typIsVarlena);
+
 				for (int i = 0; i < len; i++)
 				{
 					char *extval = OidOutputFunctionCall(typoutput, dats[i]);

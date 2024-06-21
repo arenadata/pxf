@@ -1200,11 +1200,6 @@ list_const_to_str(Const *constval, StringInfo buf)
 	Datum	   *dats;
 	ArrayType  *arr;
 	int			len;
-	Oid			typoutput;
-	bool		typIsVarlena;
-	int16		elmlen;
-	bool		elmbyval;
-	char		elmalign;
 
 	if (constval->constisnull)
 	{
@@ -1229,6 +1224,11 @@ list_const_to_str(Const *constval, StringInfo buf)
 		case INT8ARRAYOID:
 		case TEXTARRAYOID:
 			{
+				Oid			typoutput;
+				bool		typIsVarlena;
+				int16		elmlen;
+				bool		elmbyval;
+				char		elmalign;
 				/*
 				 * Get necessary data for deconstruct_array() and output function
 				 * from the catalog.

@@ -39,9 +39,11 @@ import org.slf4j.LoggerFactory;
 import java.security.PrivilegedExceptionAction;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -213,7 +215,16 @@ public class JdbcBasePlugin extends BasePlugin implements Reloader {
         assertMandatoryParameter(jdbcDriver, JDBC_DRIVER_PROPERTY_NAME, JDBC_DRIVER_OPTION_NAME);
         try {
             LOG.debug("JDBC driver: '{}'", jdbcDriver);
-            Class.forName(jdbcDriver);
+            Class<?> jdbcDriverClass = Class.forName(jdbcDriver);
+            if (!java.sql.Driver.class.isAssignableFrom(jdbcDriverClass)) {
+                throw new IllegalArgumentException(String.format(
+                        "The specified JDBC driver class [%s] does not implement java.sql.Driver", jdbcDriver));
+            }
+            if (Collections.list(DriverManager.getDrivers()).stream()
+                    .noneMatch(driver -> driver.getClass().getName().equals(jdbcDriverClass.getName()))) {
+                throw new IllegalArgumentException(String.format(
+                        "The specified JDBC driver [%s] is not registered in DriverManager", jdbcDriver));
+            }
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
         }

@@ -170,6 +170,22 @@ dbop_pxfop_map pxf_supported_opr_op_expr[] =
 	{1125 /* float48ge */ , PXFOP_GE},
 	{1121 /* float48ne */ , PXFOP_NE},
 
+	/* float84 */
+	{Float84EqualOperator /* float84eq */ , PXFOP_EQ},
+	{1132 /* float84lt */ , PXFOP_LT},
+	{1133 /* float84gt */ , PXFOP_GT},
+	{1134 /* float84le */ , PXFOP_LE},
+	{1135 /* float84ge */ , PXFOP_GE},
+	{1131 /* float84ne */ , PXFOP_NE},
+
+	/* float4 */
+	{Float4EqualOperator /* float4eq */ , PXFOP_EQ},
+	{622 /* float4lt */ , PXFOP_LT},
+	{623 /* float4gt */ , PXFOP_GT},
+	{624 /* float4le */ , PXFOP_LE},
+	{625 /* float4ge */ , PXFOP_GE},
+	{621 /* float4ne */ , PXFOP_NE},
+
 	/* boolean */
 	{BooleanEqualOperator /* booleq */ , PXFOP_EQ},
 	{58 /* boollt */ , PXFOP_LT},
@@ -259,6 +275,12 @@ dbop_pxfop_array_map pxf_supported_opr_scalar_array_op_expr[] =
 	/* float48 */
 	{1120 /* float48eq */ , PXFOP_IN, true},
 
+	/* float84 */
+	{Float84EqualOperator /* float84eq */ , PXFOP_IN, true},
+
+	/* float4 */
+	{Float4EqualOperator /* float4eq */ , PXFOP_IN, true},
+
 	/* bpchar */
 	{BPCharEqualOperator /* bpchareq */ , PXFOP_IN,
 	true},
@@ -303,6 +325,8 @@ Oid			pxf_supported_types[] =
 	TEXTARRAYOID,
 	BOOLARRAYOID,
 	BYTEAARRAYOID,
+	FLOAT4ARRAYOID,
+	FLOAT8ARRAYOID,
 };
 
 static Oid		pxf_supported_array_types[] =
@@ -313,6 +337,8 @@ static Oid		pxf_supported_array_types[] =
 	TEXTARRAYOID,
 	BOOLARRAYOID,
 	BYTEAARRAYOID,
+	FLOAT4ARRAYOID,
+	FLOAT8ARRAYOID,
 };
 
 static void
@@ -1415,6 +1441,8 @@ ListConstToStr(Const *constval, StringInfo buf, bool with_nulls)
 		case TEXTARRAYOID:
 		case BOOLARRAYOID:
 		case BYTEAARRAYOID:
+		case FLOAT4ARRAYOID:
+		case FLOAT8ARRAYOID:
 			{
 				StringInfo	interm_buf;
 				Datum	   *dats;

@@ -295,6 +295,10 @@ dbop_pxfop_array_map pxf_supported_opr_scalar_array_op_expr[] =
 #define BPCHARARRAYOID 1014
 #endif
 
+#ifndef VARCHARARRAYOID
+#define VARCHARARRAYOID 1015
+#endif
+
 Oid			pxf_supported_types[] =
 {
 	INT2OID,
@@ -321,6 +325,7 @@ Oid			pxf_supported_types[] =
 	FLOAT4ARRAYOID,
 	FLOAT8ARRAYOID,
 	BPCHARARRAYOID,
+	VARCHARARRAYOID,
 };
 
 static Oid		pxf_supported_array_types[] =
@@ -334,6 +339,7 @@ static Oid		pxf_supported_array_types[] =
 	FLOAT4ARRAYOID,
 	FLOAT8ARRAYOID,
 	BPCHARARRAYOID,
+	VARCHARARRAYOID,
 };
 
 static void
@@ -946,6 +952,34 @@ scalar_array_op_expr_to_pxffilter(ScalarArrayOpExpr *expr, PxfFilterDesc * filte
 	if (!supported_operator_type_scalar_array_op_expr(expr->opno, filter, expr->useOr))
 		return false;
 
+	if (IsA(leftop, RelabelType))
+	{
+		/*
+		 * Checks if the arg is of type Var, and if it is uses the Var as the left operator
+		 */
+		RelabelType *relabelType = (RelabelType *) leftop;
+		Expr *exprNode = relabelType->arg;
+
+		if (IsA(exprNode, Var))
+		{
+			leftop = (Node *)exprNode;
+		}
+	}
+
+	if (IsA(rightop, RelabelType))
+	{
+		/*
+		 * Checks if the arg is of type Var, and if it is uses the Var as the right operator
+		 */
+		RelabelType *relabelType = (RelabelType *) rightop;
+		Expr *exprNode = relabelType->arg;
+
+		if (IsA(exprNode, Var))
+		{
+			rightop = (Node *)exprNode;
+		}
+	}
+
 	if (IsA(leftop, Var) &&IsA(rightop, Const))
 	{
 		filter->l.opcode = PXF_ATTR_CODE;
@@ -1351,6 +1385,7 @@ list_const_to_str(Const *constval, StringInfo buf, bool with_nulls)
 		case FLOAT4ARRAYOID:
 		case FLOAT8ARRAYOID:
 		case BPCHARARRAYOID:
+		case VARCHARARRAYOID:
 			{
 				StringInfo	interm_buf;
 				Datum	   *dats;

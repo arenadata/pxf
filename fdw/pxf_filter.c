@@ -197,6 +197,14 @@ dbop_pxfop_map pxf_supported_opr_op_expr[] =
 	/* generic array comparison operators */
 	{ARRAY_EQ_OP /* array_eq */, PXFOP_EQ},
 	{1071 /*array_ne */, PXFOP_NE},
+
+	/* bytea */
+	{ByteaEqualOperator /* byteaeq */ , PXFOP_EQ},
+	{1957 /* bytealt */ , PXFOP_LT},
+	{1959 /* byteagt */ , PXFOP_GT},
+	{1958 /* byteale */ , PXFOP_LE},
+	{1960 /* byteage */ , PXFOP_GE},
+	{1956 /* byteane */ , PXFOP_NE},
 };
 
 dbop_pxfop_array_map pxf_supported_opr_scalar_array_op_expr[] =
@@ -256,6 +264,8 @@ dbop_pxfop_array_map pxf_supported_opr_scalar_array_op_expr[] =
 	true},
 
 	{BooleanEqualOperator /* booleq */ , PXFOP_IN, true},
+
+	{ByteaEqualOperator /* byteaeq */ , PXFOP_IN, true},
 };
 
 
@@ -264,6 +274,10 @@ dbop_pxfop_array_map pxf_supported_opr_scalar_array_op_expr[] =
  */
 #ifndef BOOLARRAYOID
 #define BOOLARRAYOID 1000
+#endif
+
+#ifndef BYTEAARRAYOID
+#define BYTEAARRAYOID 1001
 #endif
 
 Oid			pxf_supported_types[] =
@@ -281,12 +295,14 @@ Oid			pxf_supported_types[] =
 	CHAROID,
 	DATEOID,
 	TIMESTAMPOID,
+	BYTEAOID,
 	/* complex datatypes */
 	INT2ARRAYOID,
 	INT4ARRAYOID,
 	INT8ARRAYOID,
 	TEXTARRAYOID,
 	BOOLARRAYOID,
+	BYTEAARRAYOID,
 };
 
 static Oid		pxf_supported_array_types[] =
@@ -296,6 +312,7 @@ static Oid		pxf_supported_array_types[] =
 	INT8ARRAYOID,
 	TEXTARRAYOID,
 	BOOLARRAYOID,
+	BYTEAARRAYOID,
 };
 
 static void
@@ -1397,6 +1414,7 @@ ListConstToStr(Const *constval, StringInfo buf, bool with_nulls)
 		case INT8ARRAYOID:
 		case TEXTARRAYOID:
 		case BOOLARRAYOID:
+		case BYTEAARRAYOID:
 			{
 				StringInfo	interm_buf;
 				Datum	   *dats;

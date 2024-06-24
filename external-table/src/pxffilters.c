@@ -291,6 +291,10 @@ dbop_pxfop_array_map pxf_supported_opr_scalar_array_op_expr[] =
 #define BYTEAARRAYOID 1001
 #endif
 
+#ifndef BPCHARARRAYOID
+#define BPCHARARRAYOID 1014
+#endif
+
 Oid			pxf_supported_types[] =
 {
 	INT2OID,
@@ -316,6 +320,7 @@ Oid			pxf_supported_types[] =
 	BYTEAARRAYOID,
 	FLOAT4ARRAYOID,
 	FLOAT8ARRAYOID,
+	BPCHARARRAYOID,
 };
 
 static Oid		pxf_supported_array_types[] =
@@ -328,6 +333,7 @@ static Oid		pxf_supported_array_types[] =
 	BYTEAARRAYOID,
 	FLOAT4ARRAYOID,
 	FLOAT8ARRAYOID,
+	BPCHARARRAYOID,
 };
 
 static void
@@ -1344,6 +1350,7 @@ list_const_to_str(Const *constval, StringInfo buf, bool with_nulls)
 		case BYTEAARRAYOID:
 		case FLOAT4ARRAYOID:
 		case FLOAT8ARRAYOID:
+		case BPCHARARRAYOID:
 			{
 				StringInfo	interm_buf;
 				Datum	   *dats;

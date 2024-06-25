@@ -393,6 +393,10 @@ dbop_pxfop_array_map pxf_supported_opr_scalar_array_op_expr[] =
 #define JSONBARRAYOID 3807
 #endif
 
+#ifndef JSONARRAYOID
+#define JSONARRAYOID 199
+#endif
+
 Oid			pxf_supported_types[] =
 {
 	INT2OID,
@@ -414,6 +418,7 @@ Oid			pxf_supported_types[] =
 	INTERVALOID,
 	UUIDOID,
 	JSONBOID,
+	JSONOID,
 	/* complex datatypes */
 	INT2ARRAYOID,
 	INT4ARRAYOID,
@@ -433,6 +438,7 @@ Oid			pxf_supported_types[] =
 	NUMERICARRAYOID,
 	UUIDARRAYOID,
 	JSONBARRAYOID,
+	JSONARRAYOID,
 };
 
 static Oid		pxf_supported_array_types[] =
@@ -455,6 +461,7 @@ static Oid		pxf_supported_array_types[] =
 	NUMERICARRAYOID,
 	UUIDARRAYOID,
 	JSONBARRAYOID,
+	JSONARRAYOID,
 };
 
 static void

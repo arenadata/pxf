@@ -328,6 +328,10 @@ dbop_pxfop_array_map pxf_supported_opr_scalar_array_op_expr[] =
 #define TIMEARRAYOID 1183
 #endif
 
+#ifndef TIMESTAMPARRAYOID
+#define TIMESTAMPARRAYOID 1115
+#endif
+
 Oid			pxf_supported_types[] =
 {
 	INT2OID,
@@ -358,6 +362,7 @@ Oid			pxf_supported_types[] =
 	VARCHARARRAYOID,
 	DATEARRAYOID,
 	TIMEARRAYOID,
+	TIMESTAMPARRAYOID,
 };
 
 static Oid		pxf_supported_array_types[] =
@@ -374,6 +379,7 @@ static Oid		pxf_supported_array_types[] =
 	VARCHARARRAYOID,
 	DATEARRAYOID,
 	TIMEARRAYOID,
+	TIMESTAMPARRAYOID,
 };
 
 static void
@@ -1511,6 +1517,7 @@ ListConstToStr(Const *constval, StringInfo buf, bool with_nulls)
 		case VARCHAROID:
 		case DATEARRAYOID:
 		case TIMEARRAYOID:
+		case TIMESTAMPARRAYOID:
 			{
 				StringInfo	interm_buf;
 				Datum	   *dats;

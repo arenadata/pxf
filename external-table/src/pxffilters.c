@@ -243,6 +243,14 @@ dbop_pxfop_map pxf_supported_opr_op_expr[] =
 	{1333 /* interval_le */ , PXFOP_LE},
 	{1335 /* interval_ge */ , PXFOP_GE},
 	{1331 /* interval_ne */ , PXFOP_NE},
+
+	/* uuid */
+	{UuidEqualOperator /* uuid_eq */ , PXFOP_EQ},
+	{2974 /* uuid_lt */ , PXFOP_LT},
+	{2975 /* uuid_gt */ , PXFOP_GT},
+	{2976 /* uuid_le */ , PXFOP_LE},
+	{2977 /* uuid_ge */ , PXFOP_GE},
+	{2973 /* uuid_ne */ , PXFOP_NE},
 };
 
 
@@ -310,6 +318,8 @@ dbop_pxfop_array_map pxf_supported_opr_scalar_array_op_expr[] =
 	{IntervalEqualOperator /* interval_eq */ , PXFOP_IN, true},
 
 	{NumericEqualOperator /* numericeq */ , PXFOP_IN, true},
+
+	{UuidEqualOperator /* uuid_eq */ , PXFOP_IN, true},
 };
 
 /*
@@ -355,6 +365,10 @@ dbop_pxfop_array_map pxf_supported_opr_scalar_array_op_expr[] =
 #define NUMERICARRAYOID 1231
 #endif
 
+#ifndef UUIDARRAYOID
+#define UUIDARRAYOID 2951
+#endif
+
 Oid			pxf_supported_types[] =
 {
 	INT2OID,
@@ -374,6 +388,7 @@ Oid			pxf_supported_types[] =
 	TIMEOID,
 	TIMESTAMPTZOID,
 	INTERVALOID,
+	UUIDOID,
 	/* complex datatypes */
 	INT2ARRAYOID,
 	INT4ARRAYOID,
@@ -391,6 +406,7 @@ Oid			pxf_supported_types[] =
 	TIMESTAMPTZARRAYOID,
 	INTERVALARRAYOID,
 	NUMERICARRAYOID,
+	UUIDARRAYOID,
 };
 
 static Oid		pxf_supported_array_types[] =
@@ -411,6 +427,7 @@ static Oid		pxf_supported_array_types[] =
 	TIMESTAMPTZARRAYOID,
 	INTERVALARRAYOID,
 	NUMERICARRAYOID,
+	UUIDARRAYOID,
 };
 
 static void
@@ -1412,6 +1429,7 @@ scalar_const_to_str(Const *constval, StringInfo buf)
 		case TIMEOID:
 		case TIMESTAMPTZOID:
 		case INTERVALOID:
+		case UUIDOID:
 			appendStringInfo(buf, "%s", extval);
 			break;
 		default:
@@ -1466,6 +1484,7 @@ list_const_to_str(Const *constval, StringInfo buf, bool with_nulls)
 		case TIMESTAMPTZARRAYOID:
 		case INTERVALARRAYOID:
 		case NUMERICARRAYOID:
+		case UUIDARRAYOID:
 			{
 				StringInfo	interm_buf;
 				Datum	   *dats;

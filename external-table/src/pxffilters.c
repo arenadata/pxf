@@ -308,6 +308,8 @@ dbop_pxfop_array_map pxf_supported_opr_scalar_array_op_expr[] =
 	{TimestampTZEqualOperator /* time_eq */ , PXFOP_IN, true},
 
 	{IntervalEqualOperator /* interval_eq */ , PXFOP_IN, true},
+
+	{NumericEqualOperator /* numericeq */ , PXFOP_IN, true},
 };
 
 /*
@@ -349,6 +351,10 @@ dbop_pxfop_array_map pxf_supported_opr_scalar_array_op_expr[] =
 #define INTERVALARRAYOID 1187
 #endif
 
+#ifndef NUMERICARRAYOID
+#define NUMERICARRAYOID 1231
+#endif
+
 Oid			pxf_supported_types[] =
 {
 	INT2OID,
@@ -384,6 +390,7 @@ Oid			pxf_supported_types[] =
 	TIMESTAMPARRAYOID,
 	TIMESTAMPTZARRAYOID,
 	INTERVALARRAYOID,
+	NUMERICARRAYOID,
 };
 
 static Oid		pxf_supported_array_types[] =
@@ -403,6 +410,7 @@ static Oid		pxf_supported_array_types[] =
 	TIMESTAMPARRAYOID,
 	TIMESTAMPTZARRAYOID,
 	INTERVALARRAYOID,
+	NUMERICARRAYOID,
 };
 
 static void
@@ -1457,6 +1465,7 @@ list_const_to_str(Const *constval, StringInfo buf, bool with_nulls)
 		case TIMESTAMPARRAYOID:
 		case TIMESTAMPTZARRAYOID:
 		case INTERVALARRAYOID:
+		case NUMERICARRAYOID:
 			{
 				StringInfo	interm_buf;
 				Datum	   *dats;

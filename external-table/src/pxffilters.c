@@ -1549,7 +1549,10 @@ list_const_to_str(Const *constval, StringInfo buf, bool with_nulls)
 					if (!with_nulls || !elem_nulls[i])
 						extval = OidOutputFunctionCall(typoutput, dats[i]);
 
-					if (ARR_ELEMTYPE(arr) == BOOLOID){
+					if (ARR_ELEMTYPE(arr) != BOOLOID)
+						appendStringInfo(interm_buf, "%s", extval);
+					else
+					{
 						if (*extval == 't')
 							appendStringInfo(interm_buf, "%s", TrueConstValue);
 						else if (*extval == 'f')
@@ -1557,8 +1560,6 @@ list_const_to_str(Const *constval, StringInfo buf, bool with_nulls)
 						else
 							appendStringInfo(interm_buf, "%s", NullConstValue);
 					}
-					else
-						appendStringInfo(interm_buf, "%s", extval);
 
 					appendStringInfo(buf, "%c%d%c%s",
 									 PXF_SIZE_BYTES, interm_buf->len,

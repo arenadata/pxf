@@ -1601,7 +1601,7 @@ ListConstToStr(Const *constval, StringInfo buf, bool with_nulls)
 		case FLOAT4ARRAYOID:
 		case FLOAT8ARRAYOID:
 		case BPCHARARRAYOID:
-		case VARCHAROID:
+		case VARCHARARRAYOID:
 		case DATEARRAYOID:
 		case TIMEARRAYOID:
 		case TIMESTAMPARRAYOID:

@@ -1358,8 +1358,6 @@ supported_array_type(Oid type)
 			return true;
 	}
 
-	elog(DEBUG1, "supported_array_type: filter pushdown is not supported for datatype oid: %d", type);
-
 	return false;
 }
 

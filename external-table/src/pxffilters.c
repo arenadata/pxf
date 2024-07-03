@@ -1456,6 +1456,12 @@ scalar_const_to_str(Const *constval, StringInfo buf)
 		case JSONBOID:
 			appendStringInfo(buf, "%s", extval);
 			break;
+		case BOOLOID:
+			if (*extval == 't')
+				appendStringInfo(buf, "%s", TrueConstValue);
+			else
+				appendStringInfo(buf, "%s", FalseConstValue);
+			break;
 		default:
 			/* should never happen. we filter on types earlier */
 			elog(ERROR,

@@ -429,7 +429,7 @@ Oid			pxf_supported_types[] =
 	NUMERICARRAYOID,
 	UUIDARRAYOID,
 	JSONBARRAYOID,
-	JSONARRAYOID
+	JSONARRAYOID,
 };
 
 static Oid		pxf_supported_array_types[] =
@@ -452,7 +452,7 @@ static Oid		pxf_supported_array_types[] =
 	NUMERICARRAYOID,
 	UUIDARRAYOID,
 	JSONBARRAYOID,
-	JSONARRAYOID
+	JSONARRAYOID,
 };
 
 static void

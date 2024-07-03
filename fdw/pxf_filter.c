@@ -875,7 +875,7 @@ PxfSerializeFilterList(List *filters)
 								 pxfoperand_is_attr(r))
 						{
 							appendStringInfo(resbuf, "%c%d%s%c%d",
-											 PXF_SCALAR_CONST_CODE, l.consttype,
+											 PXF_LIST_CONST_CODE, l.consttype,
 											 l.conststr->data,
 											 PXF_ATTR_CODE, r.attnum - 1);	/* Java attrs are
 																			 * 0-based */

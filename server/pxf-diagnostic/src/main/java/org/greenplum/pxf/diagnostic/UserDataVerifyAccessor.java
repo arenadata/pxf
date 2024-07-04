@@ -5,7 +5,7 @@ import org.greenplum.pxf.api.model.Accessor;
 import org.greenplum.pxf.api.model.BasePlugin;
 
 import java.util.StringJoiner;
-import java.util.UUID;
+
 /**
  * Test class for regression tests that generates rows of data and includes a filter provided by Greenplum.
  * The returned data has 7 columns delimited with DELIMITER property value: 6 columns of different types
@@ -36,7 +36,7 @@ public class UserDataVerifyAccessor extends BasePlugin implements Accessor {
     public OneRow readNextObject() {
 
         // Termination rule
-            if (counter >= 10) {
+        if (counter >= 10) {
             return null;
         }
 

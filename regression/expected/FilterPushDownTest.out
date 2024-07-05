@@ -4336,7 +4336,3 @@ SELECT x33, filterValue FROM test_filter WHERE x33 NOT IN (array['{"a":2}'::json
  {"{\"a\": 9}"} | a38m3807s8d{a: 2}o6a38m3807s8d{a: 0}o6l0
 (8 rows)
 
--- start_ignore
--- clean up used tables
-DROP EXTERNAL TABLE IF EXISTS test_filter CASCADE;
--- end_ignore

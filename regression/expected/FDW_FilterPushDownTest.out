@@ -4342,10 +4342,3 @@ SELECT x33, filterValue FROM test_filter WHERE x33 NOT IN (array['{"a":2}'::json
  {"{\"a\": 9}"} | a38m3807s8d{a: 2}o6a38m3807s8d{a: 0}o6l0
 (8 rows)
 
--- start_ignore
--- clean up resources
- DROP FOREIGN TABLE IF EXISTS test_filter CASCADE;
- DROP USER MAPPING IF EXISTS FOR CURRENT_USER SERVER pxf_filter_push_down_server;
- DROP SERVER IF EXISTS pxf_filter_push_down_server CASCADE;
- DROP FOREIGN DATA WRAPPER IF EXISTS pxf_filter_push_down_fdw;
--- end_ignore

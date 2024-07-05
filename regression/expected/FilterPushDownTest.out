@@ -241,15 +241,15 @@ SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  t0 IN     ('C
 (2 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  t0 NOT IN ('C','D') ORDER BY t0, a1;
- t0 | a1 | b2 |  c3  | d4 | e5 | filtervalue 
-----+----+----+------+----+----+-------------
- B  |    | f  | 1.11 | BB | BB | No filter
- E  |  4 | t  | 4.41 |    | EE | No filter
- F  |  5 | f  | 5.51 | FF |    | No filter
- G  |  6 | t  | 6.61 | GG | GG | No filter
- H  |  7 | f  | 7.71 | HH | HH | No filter
- I  |  8 | t  | 8.81 | II | II | No filter
- J  |  9 | f  | 9.91 | JJ | JJ | No filter
+ t0 | a1 | b2 |  c3  | d4 | e5 |     filtervalue      
+----+----+----+------+----+----+----------------------
+ B  |    | f  | 1.11 | BB | BB | a0m1009s1dCs1dDo10l2
+ E  |  4 | t  | 4.41 |    | EE | a0m1009s1dCs1dDo10l2
+ F  |  5 | f  | 5.51 | FF |    | a0m1009s1dCs1dDo10l2
+ G  |  6 | t  | 6.61 | GG | GG | a0m1009s1dCs1dDo10l2
+ H  |  7 | f  | 7.71 | HH | HH | a0m1009s1dCs1dDo10l2
+ I  |  8 | t  | 8.81 | II | II | a0m1009s1dCs1dDo10l2
+ J  |  9 | f  | 9.91 | JJ | JJ | a0m1009s1dCs1dDo10l2
 (7 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  t0 BETWEEN     'B' AND 'D' ORDER BY t0, a1;
@@ -357,15 +357,15 @@ SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  a1 IN     (2,
 (2 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  a1 NOT IN (2,3) ORDER BY t0, a1;
- t0 | a1 | b2 |  c3  | d4 | e5 | filtervalue 
-----+----+----+------+----+----+-------------
- E  |  4 | t  | 4.41 |    | EE | No filter
- F  |  5 | f  | 5.51 | FF |    | No filter
- G  |  6 | t  | 6.61 | GG | GG | No filter
- H  |  7 | f  | 7.71 | HH | HH | No filter
- I  |  8 | t  | 8.81 | II | II | No filter
- J  |  9 | f  | 9.91 | JJ | JJ | No filter
-    |  0 | t  | 0.01 | AA | AA | No filter
+ t0 | a1 | b2 |  c3  | d4 | e5 |     filtervalue      
+----+----+----+------+----+----+----------------------
+ E  |  4 | t  | 4.41 |    | EE | a1m1007s1d2s1d3o10l2
+ F  |  5 | f  | 5.51 | FF |    | a1m1007s1d2s1d3o10l2
+ G  |  6 | t  | 6.61 | GG | GG | a1m1007s1d2s1d3o10l2
+ H  |  7 | f  | 7.71 | HH | HH | a1m1007s1d2s1d3o10l2
+ I  |  8 | t  | 8.81 | II | II | a1m1007s1d2s1d3o10l2
+ J  |  9 | f  | 9.91 | JJ | JJ | a1m1007s1d2s1d3o10l2
+    |  0 | t  | 0.01 | AA | AA | a1m1007s1d2s1d3o10l2
 (7 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  a1 BETWEEN     2 AND 4 ORDER BY t0, a1;
@@ -473,15 +473,15 @@ SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  c3 IN     (1.
 (2 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  c3 NOT IN (1.11,2.21) ORDER BY t0, a1;
- t0 | a1 | b2 |  c3  | d4 | e5 | filtervalue 
-----+----+----+------+----+----+-------------
- E  |  4 | t  | 4.41 |    | EE | No filter
- F  |  5 | f  | 5.51 | FF |    | No filter
- G  |  6 | t  | 6.61 | GG | GG | No filter
- H  |  7 | f  | 7.71 | HH | HH | No filter
- I  |  8 | t  | 8.81 | II | II | No filter
- J  |  9 | f  | 9.91 | JJ | JJ | No filter
-    |  0 | t  | 0.01 | AA | AA | No filter
+ t0 | a1 | b2 |  c3  | d4 | e5 |        filtervalue         
+----+----+----+------+----+----+----------------------------
+ E  |  4 | t  | 4.41 |    | EE | a3m1231s4d1.11s4d2.21o10l2
+ F  |  5 | f  | 5.51 | FF |    | a3m1231s4d1.11s4d2.21o10l2
+ G  |  6 | t  | 6.61 | GG | GG | a3m1231s4d1.11s4d2.21o10l2
+ H  |  7 | f  | 7.71 | HH | HH | a3m1231s4d1.11s4d2.21o10l2
+ I  |  8 | t  | 8.81 | II | II | a3m1231s4d1.11s4d2.21o10l2
+ J  |  9 | f  | 9.91 | JJ | JJ | a3m1231s4d1.11s4d2.21o10l2
+    |  0 | t  | 0.01 | AA | AA | a3m1231s4d1.11s4d2.21o10l2
 (7 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  c3 BETWEEN     1.11 AND 4.41 ORDER BY t0, a1;
@@ -614,15 +614,15 @@ SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  d4 IN     ('B
 (2 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  d4 NOT IN ('BB','CC') ORDER BY t0, a1;
- t0 | a1 | b2 |  c3  | d4 | e5 | filtervalue 
-----+----+----+------+----+----+-------------
- D  |  3 | f  |      | DD | DD | No filter
- F  |  5 | f  | 5.51 | FF |    | No filter
- G  |  6 | t  | 6.61 | GG | GG | No filter
- H  |  7 | f  | 7.71 | HH | HH | No filter
- I  |  8 | t  | 8.81 | II | II | No filter
- J  |  9 | f  | 9.91 | JJ | JJ | No filter
-    |  0 | t  | 0.01 | AA | AA | No filter
+ t0 | a1 | b2 |  c3  | d4 | e5 |      filtervalue       
+----+----+----+------+----+----+------------------------
+ D  |  3 | f  |      | DD | DD | a4m1014s2dBBs2dCCo10l2
+ F  |  5 | f  | 5.51 | FF |    | a4m1014s2dBBs2dCCo10l2
+ G  |  6 | t  | 6.61 | GG | GG | a4m1014s2dBBs2dCCo10l2
+ H  |  7 | f  | 7.71 | HH | HH | a4m1014s2dBBs2dCCo10l2
+ I  |  8 | t  | 8.81 | II | II | a4m1014s2dBBs2dCCo10l2
+ J  |  9 | f  | 9.91 | JJ | JJ | a4m1014s2dBBs2dCCo10l2
+    |  0 | t  | 0.01 | AA | AA | a4m1014s2dBBs2dCCo10l2
 (7 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  d4 BETWEEN     'AA' AND 'CC' ORDER BY t0, a1;
@@ -754,15 +754,15 @@ SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  e5 IN     ('B
 (2 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  e5 NOT IN ('BB','CC') ORDER BY t0, a1;
- t0 | a1 | b2 |  c3  | d4 | e5 | filtervalue 
-----+----+----+------+----+----+-------------
- D  |  3 | f  |      | DD | DD | No filter
- E  |  4 | t  | 4.41 |    | EE | No filter
- G  |  6 | t  | 6.61 | GG | GG | No filter
- H  |  7 | f  | 7.71 | HH | HH | No filter
- I  |  8 | t  | 8.81 | II | II | No filter
- J  |  9 | f  | 9.91 | JJ | JJ | No filter
-    |  0 | t  | 0.01 | AA | AA | No filter
+ t0 | a1 | b2 |  c3  | d4 | e5 |      filtervalue       
+----+----+----+------+----+----+------------------------
+ D  |  3 | f  |      | DD | DD | a5m1009s2dBBs2dCCo10l2
+ E  |  4 | t  | 4.41 |    | EE | a5m1009s2dBBs2dCCo10l2
+ G  |  6 | t  | 6.61 | GG | GG | a5m1009s2dBBs2dCCo10l2
+ H  |  7 | f  | 7.71 | HH | HH | a5m1009s2dBBs2dCCo10l2
+ I  |  8 | t  | 8.81 | II | II | a5m1009s2dBBs2dCCo10l2
+ J  |  9 | f  | 9.91 | JJ | JJ | a5m1009s2dBBs2dCCo10l2
+    |  0 | t  | 0.01 | AA | AA | a5m1009s2dBBs2dCCo10l2
 (7 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  e5 BETWEEN     'AA' AND 'CC' ORDER BY t0, a1;
@@ -977,15 +977,15 @@ SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  t0 IN     ('C
 (2 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  t0 NOT IN ('C','D') ORDER BY t0, a1;
- t0 | a1 | b2 |  c3  | d4 | e5 | filtervalue 
-----+----+----+------+----+----+-------------
- B  |    | f  | 1.11 | BB | BB | No filter
- E  |  4 | t  | 4.41 |    | EE | No filter
- F  |  5 | f  | 5.51 | FF |    | No filter
- G  |  6 | t  | 6.61 | GG | GG | No filter
- H  |  7 | f  | 7.71 | HH | HH | No filter
- I  |  8 | t  | 8.81 | II | II | No filter
- J  |  9 | f  | 9.91 | JJ | JJ | No filter
+ t0 | a1 | b2 |  c3  | d4 | e5 |     filtervalue      
+----+----+----+------+----+----+----------------------
+ B  |    | f  | 1.11 | BB | BB | a0m1009s1dCs1dDo10l2
+ E  |  4 | t  | 4.41 |    | EE | a0m1009s1dCs1dDo10l2
+ F  |  5 | f  | 5.51 | FF |    | a0m1009s1dCs1dDo10l2
+ G  |  6 | t  | 6.61 | GG | GG | a0m1009s1dCs1dDo10l2
+ H  |  7 | f  | 7.71 | HH | HH | a0m1009s1dCs1dDo10l2
+ I  |  8 | t  | 8.81 | II | II | a0m1009s1dCs1dDo10l2
+ J  |  9 | f  | 9.91 | JJ | JJ | a0m1009s1dCs1dDo10l2
 (7 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  t0 BETWEEN     'B' AND 'D' ORDER BY t0, a1;
@@ -1093,15 +1093,15 @@ SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  a1 IN     (2,
 (2 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  a1 NOT IN (2,3) ORDER BY t0, a1;
- t0 | a1 | b2 |  c3  | d4 | e5 | filtervalue 
-----+----+----+------+----+----+-------------
- E  |  4 | t  | 4.41 |    | EE | No filter
- F  |  5 | f  | 5.51 | FF |    | No filter
- G  |  6 | t  | 6.61 | GG | GG | No filter
- H  |  7 | f  | 7.71 | HH | HH | No filter
- I  |  8 | t  | 8.81 | II | II | No filter
- J  |  9 | f  | 9.91 | JJ | JJ | No filter
-    |  0 | t  | 0.01 | AA | AA | No filter
+ t0 | a1 | b2 |  c3  | d4 | e5 |     filtervalue      
+----+----+----+------+----+----+----------------------
+ E  |  4 | t  | 4.41 |    | EE | a1m1007s1d2s1d3o10l2
+ F  |  5 | f  | 5.51 | FF |    | a1m1007s1d2s1d3o10l2
+ G  |  6 | t  | 6.61 | GG | GG | a1m1007s1d2s1d3o10l2
+ H  |  7 | f  | 7.71 | HH | HH | a1m1007s1d2s1d3o10l2
+ I  |  8 | t  | 8.81 | II | II | a1m1007s1d2s1d3o10l2
+ J  |  9 | f  | 9.91 | JJ | JJ | a1m1007s1d2s1d3o10l2
+    |  0 | t  | 0.01 | AA | AA | a1m1007s1d2s1d3o10l2
 (7 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  a1 BETWEEN     2 AND 4 ORDER BY t0, a1;
@@ -1209,15 +1209,15 @@ SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  c3 IN     (1.
 (2 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  c3 NOT IN (1.11,2.21) ORDER BY t0, a1;
- t0 | a1 | b2 |  c3  | d4 | e5 | filtervalue 
-----+----+----+------+----+----+-------------
- E  |  4 | t  | 4.41 |    | EE | No filter
- F  |  5 | f  | 5.51 | FF |    | No filter
- G  |  6 | t  | 6.61 | GG | GG | No filter
- H  |  7 | f  | 7.71 | HH | HH | No filter
- I  |  8 | t  | 8.81 | II | II | No filter
- J  |  9 | f  | 9.91 | JJ | JJ | No filter
-    |  0 | t  | 0.01 | AA | AA | No filter
+ t0 | a1 | b2 |  c3  | d4 | e5 |        filtervalue         
+----+----+----+------+----+----+----------------------------
+ E  |  4 | t  | 4.41 |    | EE | a3m1231s4d1.11s4d2.21o10l2
+ F  |  5 | f  | 5.51 | FF |    | a3m1231s4d1.11s4d2.21o10l2
+ G  |  6 | t  | 6.61 | GG | GG | a3m1231s4d1.11s4d2.21o10l2
+ H  |  7 | f  | 7.71 | HH | HH | a3m1231s4d1.11s4d2.21o10l2
+ I  |  8 | t  | 8.81 | II | II | a3m1231s4d1.11s4d2.21o10l2
+ J  |  9 | f  | 9.91 | JJ | JJ | a3m1231s4d1.11s4d2.21o10l2
+    |  0 | t  | 0.01 | AA | AA | a3m1231s4d1.11s4d2.21o10l2
 (7 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  c3 BETWEEN     1.11 AND 4.41 ORDER BY t0, a1;
@@ -1350,15 +1350,15 @@ SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  d4 IN     ('B
 (2 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  d4 NOT IN ('BB','CC') ORDER BY t0, a1;
- t0 | a1 | b2 |  c3  | d4 | e5 | filtervalue 
-----+----+----+------+----+----+-------------
- D  |  3 | f  |      | DD | DD | No filter
- F  |  5 | f  | 5.51 | FF |    | No filter
- G  |  6 | t  | 6.61 | GG | GG | No filter
- H  |  7 | f  | 7.71 | HH | HH | No filter
- I  |  8 | t  | 8.81 | II | II | No filter
- J  |  9 | f  | 9.91 | JJ | JJ | No filter
-    |  0 | t  | 0.01 | AA | AA | No filter
+ t0 | a1 | b2 |  c3  | d4 | e5 |      filtervalue       
+----+----+----+------+----+----+------------------------
+ D  |  3 | f  |      | DD | DD | a4m1014s2dBBs2dCCo10l2
+ F  |  5 | f  | 5.51 | FF |    | a4m1014s2dBBs2dCCo10l2
+ G  |  6 | t  | 6.61 | GG | GG | a4m1014s2dBBs2dCCo10l2
+ H  |  7 | f  | 7.71 | HH | HH | a4m1014s2dBBs2dCCo10l2
+ I  |  8 | t  | 8.81 | II | II | a4m1014s2dBBs2dCCo10l2
+ J  |  9 | f  | 9.91 | JJ | JJ | a4m1014s2dBBs2dCCo10l2
+    |  0 | t  | 0.01 | AA | AA | a4m1014s2dBBs2dCCo10l2
 (7 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  d4 BETWEEN     'AA' AND 'CC' ORDER BY t0, a1;
@@ -1490,15 +1490,15 @@ SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  e5 IN     ('B
 (2 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  e5 NOT IN ('BB','CC') ORDER BY t0, a1;
- t0 | a1 | b2 |  c3  | d4 | e5 | filtervalue 
-----+----+----+------+----+----+-------------
- D  |  3 | f  |      | DD | DD | No filter
- E  |  4 | t  | 4.41 |    | EE | No filter
- G  |  6 | t  | 6.61 | GG | GG | No filter
- H  |  7 | f  | 7.71 | HH | HH | No filter
- I  |  8 | t  | 8.81 | II | II | No filter
- J  |  9 | f  | 9.91 | JJ | JJ | No filter
-    |  0 | t  | 0.01 | AA | AA | No filter
+ t0 | a1 | b2 |  c3  | d4 | e5 |      filtervalue       
+----+----+----+------+----+----+------------------------
+ D  |  3 | f  |      | DD | DD | a5m1009s2dBBs2dCCo10l2
+ E  |  4 | t  | 4.41 |    | EE | a5m1009s2dBBs2dCCo10l2
+ G  |  6 | t  | 6.61 | GG | GG | a5m1009s2dBBs2dCCo10l2
+ H  |  7 | f  | 7.71 | HH | HH | a5m1009s2dBBs2dCCo10l2
+ I  |  8 | t  | 8.81 | II | II | a5m1009s2dBBs2dCCo10l2
+ J  |  9 | f  | 9.91 | JJ | JJ | a5m1009s2dBBs2dCCo10l2
+    |  0 | t  | 0.01 | AA | AA | a5m1009s2dBBs2dCCo10l2
 (7 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE  e5 BETWEEN     'AA' AND 'CC' ORDER BY t0, a1;
@@ -1762,15 +1762,15 @@ SELECT x1, filterValue FROM test_filter WHERE x1 IN ('BB','CC') ORDER BY t0, a1;
 (2 rows)
 
 SELECT x1, filterValue FROM test_filter WHERE x1 NOT IN ('BB','CC') ORDER BY t0, a1;
- x1 | filtervalue 
-----+-------------
- DD | No filter
- EE | No filter
- FF | No filter
- GG | No filter
- HH | No filter
- II | No filter
- JJ | No filter
+ x1 |      filtervalue       
+----+------------------------
+ DD | a6m1014s2dBBs2dCCo10l2
+ EE | a6m1014s2dBBs2dCCo10l2
+ FF | a6m1014s2dBBs2dCCo10l2
+ GG | a6m1014s2dBBs2dCCo10l2
+ HH | a6m1014s2dBBs2dCCo10l2
+ II | a6m1014s2dBBs2dCCo10l2
+ JJ | a6m1014s2dBBs2dCCo10l2
 (7 rows)
 
 SELECT x1, filterValue FROM test_filter WHERE x1 BETWEEN 'AA' AND 'CC' ORDER BY t0, a1;
@@ -1878,15 +1878,15 @@ SELECT x2, filterValue FROM test_filter WHERE x2 IN (2::int,3::int2) ORDER BY t0
 (2 rows)
 
 SELECT x2, filterValue FROM test_filter WHERE x2 NOT IN (2::int2,3::int2) ORDER BY t0, a1;
- x2 | filtervalue 
-----+-------------
-  4 | No filter
-  5 | No filter
-  6 | No filter
-  7 | No filter
-  8 | No filter
-  9 | No filter
-  0 | No filter
+ x2 |     filtervalue      
+----+----------------------
+  4 | a7m1005s1d2s1d3o10l2
+  5 | a7m1005s1d2s1d3o10l2
+  6 | a7m1005s1d2s1d3o10l2
+  7 | a7m1005s1d2s1d3o10l2
+  8 | a7m1005s1d2s1d3o10l2
+  9 | a7m1005s1d2s1d3o10l2
+  0 | a7m1005s1d2s1d3o10l2
 (7 rows)
 
 SELECT x2, filterValue FROM test_filter WHERE x2 BETWEEN 2::int2 AND 4::int2 ORDER BY t0, a1;
@@ -1993,16 +1993,16 @@ SELECT x3, filterValue FROM test_filter WHERE x3 IN (2::int8,3::int8) ORDER BY t
 (1 row)
 
 SELECT x3, filterValue FROM test_filter WHERE x3 NOT IN (2::int8,3::int8) ORDER BY t0, a1;
- x3 | filtervalue 
-----+-------------
-  1 | No filter
-  4 | No filter
-  5 | No filter
-  6 | No filter
-  7 | No filter
-  8 | No filter
-  9 | No filter
-  0 | No filter
+ x3 |     filtervalue      
+----+----------------------
+  1 | a8m1016s1d2s1d3o10l2
+  4 | a8m1016s1d2s1d3o10l2
+  5 | a8m1016s1d2s1d3o10l2
+  6 | a8m1016s1d2s1d3o10l2
+  7 | a8m1016s1d2s1d3o10l2
+  8 | a8m1016s1d2s1d3o10l2
+  9 | a8m1016s1d2s1d3o10l2
+  0 | a8m1016s1d2s1d3o10l2
 (8 rows)
 
 SELECT x3, filterValue FROM test_filter WHERE x3 BETWEEN 2::int8 AND 4::int8 ORDER BY t0, a1;
@@ -2110,15 +2110,15 @@ SELECT x4, filterValue FROM test_filter WHERE x4 IN (1.11::real,2.21::real) ORDE
 (2 rows)
 
 SELECT x4, filterValue FROM test_filter WHERE x4 NOT IN (1.11::real, 2.21::real) ORDER BY t0, a1;
-  x4  | filtervalue 
-------+-------------
- 4.41 | No filter
- 5.51 | No filter
- 6.61 | No filter
- 7.71 | No filter
- 8.81 | No filter
- 9.91 | No filter
- 0.01 | No filter
+  x4  |        filtervalue         
+------+----------------------------
+ 4.41 | a9m1021s4d1.11s4d2.21o10l2
+ 5.51 | a9m1021s4d1.11s4d2.21o10l2
+ 6.61 | a9m1021s4d1.11s4d2.21o10l2
+ 7.71 | a9m1021s4d1.11s4d2.21o10l2
+ 8.81 | a9m1021s4d1.11s4d2.21o10l2
+ 9.91 | a9m1021s4d1.11s4d2.21o10l2
+ 0.01 | a9m1021s4d1.11s4d2.21o10l2
 (7 rows)
 
 SELECT x4, filterValue FROM test_filter WHERE x4 BETWEEN 1.11::real AND 4.41::real ORDER BY t0, a1;
@@ -2226,15 +2226,15 @@ SELECT x5, filterValue FROM test_filter WHERE x5 IN (1.11::float8, 2.21::float8)
 (2 rows)
 
 SELECT x5, filterValue FROM test_filter WHERE x5 NOT IN (1.11::float8, 2.21::float8) ORDER BY t0, a1;
-  x5  | filtervalue 
-------+-------------
- 3.31 | No filter
- 5.51 | No filter
- 6.61 | No filter
- 7.71 | No filter
- 8.81 | No filter
- 9.91 | No filter
- 0.01 | No filter
+  x5  |         filtervalue         
+------+-----------------------------
+ 3.31 | a10m1022s4d1.11s4d2.21o10l2
+ 5.51 | a10m1022s4d1.11s4d2.21o10l2
+ 6.61 | a10m1022s4d1.11s4d2.21o10l2
+ 7.71 | a10m1022s4d1.11s4d2.21o10l2
+ 8.81 | a10m1022s4d1.11s4d2.21o10l2
+ 9.91 | a10m1022s4d1.11s4d2.21o10l2
+ 0.01 | a10m1022s4d1.11s4d2.21o10l2
 (7 rows)
 
 SELECT x5, filterValue FROM test_filter WHERE x5 BETWEEN 1.11::float8 AND 4.41::float8 ORDER BY t0, a1;
@@ -2376,17 +2376,17 @@ SELECT x6, filterValue FROM test_filter WHERE x6  IN ('\132greenplum\132'::bytea
 (9 rows)
 
 SELECT x6, filterValue FROM test_filter WHERE x6 NOT IN ('\132grenplum\132'::bytea,'sdas\132'::bytea) ORDER BY t0, a1;
-            x6            | filtervalue 
---------------------------+-------------
- \x5a677265656e706c756d5a | No filter
- \x5a677265656e706c756d5a | No filter
- \x5a677265656e706c756d5a | No filter
- \x5a677265656e706c756d5a | No filter
- \x5a677265656e706c756d5a | No filter
- \x5a677265656e706c756d5a | No filter
- \x5a677265656e706c756d5a | No filter
- \x5a677265656e706c756d5a | No filter
- \x5a677265656e706c756d5a | No filter
+            x6            |                       filtervalue                       
+--------------------------+---------------------------------------------------------
+ \x5a677265656e706c756d5a | a11m1001s22d\x5a6772656e706c756d5as12d\x736461735ao10l2
+ \x5a677265656e706c756d5a | a11m1001s22d\x5a6772656e706c756d5as12d\x736461735ao10l2
+ \x5a677265656e706c756d5a | a11m1001s22d\x5a6772656e706c756d5as12d\x736461735ao10l2
+ \x5a677265656e706c756d5a | a11m1001s22d\x5a6772656e706c756d5as12d\x736461735ao10l2
+ \x5a677265656e706c756d5a | a11m1001s22d\x5a6772656e706c756d5as12d\x736461735ao10l2
+ \x5a677265656e706c756d5a | a11m1001s22d\x5a6772656e706c756d5as12d\x736461735ao10l2
+ \x5a677265656e706c756d5a | a11m1001s22d\x5a6772656e706c756d5as12d\x736461735ao10l2
+ \x5a677265656e706c756d5a | a11m1001s22d\x5a6772656e706c756d5as12d\x736461735ao10l2
+ \x5a677265656e706c756d5a | a11m1001s22d\x5a6772656e706c756d5as12d\x736461735ao10l2
 (9 rows)
 
 SELECT x6, filterValue FROM test_filter WHERE x6 BETWEEN '\132greenplum\132'::bytea AND 'sdas\132'::bytea ORDER BY t0, a1;
@@ -2504,16 +2504,16 @@ SELECT x7, filterValue FROM test_filter WHERE x7 IN ('2023-01-12'::date,'2023-01
 (2 rows)
 
 SELECT x7, filterValue FROM test_filter WHERE x7 NOT IN ('2023-01-15'::date,'2023-01-15'::date) ORDER BY t0, a1;
-     x7     | filtervalue 
-------------+-------------
- 01-11-2023 | No filter
- 01-12-2023 | No filter
- 01-13-2023 | No filter
- 01-14-2023 | No filter
- 01-16-2023 | No filter
- 01-17-2023 | No filter
- 01-18-2023 | No filter
- 01-19-2023 | No filter
+     x7     |                filtervalue                
+------------+-------------------------------------------
+ 01-11-2023 | a12m1182s10d01-15-2023s10d01-15-2023o10l2
+ 01-12-2023 | a12m1182s10d01-15-2023s10d01-15-2023o10l2
+ 01-13-2023 | a12m1182s10d01-15-2023s10d01-15-2023o10l2
+ 01-14-2023 | a12m1182s10d01-15-2023s10d01-15-2023o10l2
+ 01-16-2023 | a12m1182s10d01-15-2023s10d01-15-2023o10l2
+ 01-17-2023 | a12m1182s10d01-15-2023s10d01-15-2023o10l2
+ 01-18-2023 | a12m1182s10d01-15-2023s10d01-15-2023o10l2
+ 01-19-2023 | a12m1182s10d01-15-2023s10d01-15-2023o10l2
 (8 rows)
 
 SELECT x7, filterValue FROM test_filter WHERE x7 BETWEEN '2023-01-11'::date AND '2023-01-19'::date ORDER BY t0, a1;
@@ -2628,16 +2628,16 @@ SELECT x8, filterValue FROM test_filter WHERE x8 IN ('12:34:52'::time,'12:34:55'
 (2 rows)
 
 SELECT x8, filterValue FROM test_filter WHERE x8 NOT IN ('12:34:55'::time,'12:34:55'::time) ORDER BY t0, a1;
-    x8    | filtervalue 
-----------+-------------
- 12:34:52 | No filter
- 12:34:53 | No filter
- 12:34:54 | No filter
- 12:34:56 | No filter
- 12:34:57 | No filter
- 12:34:58 | No filter
- 12:34:59 | No filter
- 12:34:50 | No filter
+    x8    |             filtervalue             
+----------+-------------------------------------
+ 12:34:52 | a13m1183s8d12:34:55s8d12:34:55o10l2
+ 12:34:53 | a13m1183s8d12:34:55s8d12:34:55o10l2
+ 12:34:54 | a13m1183s8d12:34:55s8d12:34:55o10l2
+ 12:34:56 | a13m1183s8d12:34:55s8d12:34:55o10l2
+ 12:34:57 | a13m1183s8d12:34:55s8d12:34:55o10l2
+ 12:34:58 | a13m1183s8d12:34:55s8d12:34:55o10l2
+ 12:34:59 | a13m1183s8d12:34:55s8d12:34:55o10l2
+ 12:34:50 | a13m1183s8d12:34:55s8d12:34:55o10l2
 (8 rows)
 
 SELECT x8, filterValue FROM test_filter WHERE x8 BETWEEN '12:34:51'::time AND '12:34:59'::time ORDER BY t0, a1;
@@ -2744,16 +2744,16 @@ SELECT x9, filterValue FROM test_filter WHERE x9 IN ('2023-01-01 12:34:52'::time
 (1 row)
 
 SELECT x9, filterValue FROM test_filter WHERE x9 NOT IN ('2023-01-01 12:34:55'::timestamp,'2023-01-01 12:34:55'::timestamp) ORDER BY t0, a1;
-            x9            | filtervalue 
---------------------------+-------------
- Sun Jan 01 12:34:51 2023 | No filter
- Sun Jan 01 12:34:53 2023 | No filter
- Sun Jan 01 12:34:54 2023 | No filter
- Sun Jan 01 12:34:56 2023 | No filter
- Sun Jan 01 12:34:57 2023 | No filter
- Sun Jan 01 12:34:58 2023 | No filter
- Sun Jan 01 12:34:59 2023 | No filter
- Sun Jan 01 12:34:50 2023 | No filter
+            x9            |                              filtervalue                              
+--------------------------+-----------------------------------------------------------------------
+ Sun Jan 01 12:34:51 2023 | a14m1115s24dSun Jan 01 12:34:55 2023s24dSun Jan 01 12:34:55 2023o10l2
+ Sun Jan 01 12:34:53 2023 | a14m1115s24dSun Jan 01 12:34:55 2023s24dSun Jan 01 12:34:55 2023o10l2
+ Sun Jan 01 12:34:54 2023 | a14m1115s24dSun Jan 01 12:34:55 2023s24dSun Jan 01 12:34:55 2023o10l2
+ Sun Jan 01 12:34:56 2023 | a14m1115s24dSun Jan 01 12:34:55 2023s24dSun Jan 01 12:34:55 2023o10l2
+ Sun Jan 01 12:34:57 2023 | a14m1115s24dSun Jan 01 12:34:55 2023s24dSun Jan 01 12:34:55 2023o10l2
+ Sun Jan 01 12:34:58 2023 | a14m1115s24dSun Jan 01 12:34:55 2023s24dSun Jan 01 12:34:55 2023o10l2
+ Sun Jan 01 12:34:59 2023 | a14m1115s24dSun Jan 01 12:34:55 2023s24dSun Jan 01 12:34:55 2023o10l2
+ Sun Jan 01 12:34:50 2023 | a14m1115s24dSun Jan 01 12:34:55 2023s24dSun Jan 01 12:34:55 2023o10l2
 (8 rows)
 
 SELECT x9, filterValue FROM test_filter WHERE x9 BETWEEN '2023-01-01 12:34:51'::timestamp AND '2023-01-01 12:34:59'::timestamp ORDER BY t0, a1;
@@ -2863,15 +2863,15 @@ SELECT x11, filterValue FROM test_filter WHERE x11 IN ('1 hour 30 minutes'::inte
 (2 rows)
 
 SELECT x11, filterValue FROM test_filter WHERE x11 NOT IN ('1 hour 30 minutes'::interval,'1 hour 33 minutes'::interval) ORDER BY t0, a1;
-       x11        | filtervalue 
-------------------+-------------
- @ 1 hour 31 mins | No filter
- @ 1 hour 32 mins | No filter
- @ 1 hour 35 mins | No filter
- @ 1 hour 36 mins | No filter
- @ 1 hour 37 mins | No filter
- @ 1 hour 38 mins | No filter
- @ 1 hour 39 mins | No filter
+       x11        |                      filtervalue                      
+------------------+-------------------------------------------------------
+ @ 1 hour 31 mins | a16m1187s16d@ 1 hour 30 minss16d@ 1 hour 33 minso10l2
+ @ 1 hour 32 mins | a16m1187s16d@ 1 hour 30 minss16d@ 1 hour 33 minso10l2
+ @ 1 hour 35 mins | a16m1187s16d@ 1 hour 30 minss16d@ 1 hour 33 minso10l2
+ @ 1 hour 36 mins | a16m1187s16d@ 1 hour 30 minss16d@ 1 hour 33 minso10l2
+ @ 1 hour 37 mins | a16m1187s16d@ 1 hour 30 minss16d@ 1 hour 33 minso10l2
+ @ 1 hour 38 mins | a16m1187s16d@ 1 hour 30 minss16d@ 1 hour 33 minso10l2
+ @ 1 hour 39 mins | a16m1187s16d@ 1 hour 30 minss16d@ 1 hour 33 minso10l2
 (7 rows)
 
 SELECT x11, filterValue FROM test_filter WHERE x11 BETWEEN '1 hour 30 minutes'::interval AND '1 hour 35 minutes'::interval ORDER BY t0, a1;
@@ -2987,15 +2987,15 @@ SELECT x12, filterValue FROM test_filter WHERE x12 IN ('93d8f9c0-c314-447b-8690-
 (2 rows)
 
 SELECT x12, filterValue FROM test_filter WHERE x12 NOT IN ('93d8f9c0-c314-447b-8690-60c40facb8a2'::uuid ,'93d8f9c0-c314-447b-8690-60c40facb8a0'::uuid) ORDER BY t0, a1;
-                 x12                  | filtervalue 
---------------------------------------+-------------
- 93d8f9c0-c314-447b-8690-60c40facb8a1 | No filter
- 93d8f9c0-c314-447b-8690-60c40facb8a3 | No filter
- 93d8f9c0-c314-447b-8690-60c40facb8a4 | No filter
- 93d8f9c0-c314-447b-8690-60c40facb8a6 | No filter
- 93d8f9c0-c314-447b-8690-60c40facb8a7 | No filter
- 93d8f9c0-c314-447b-8690-60c40facb8a8 | No filter
- 93d8f9c0-c314-447b-8690-60c40facb8a9 | No filter
+                 x12                  |                                          filtervalue                                          
+--------------------------------------+-----------------------------------------------------------------------------------------------
+ 93d8f9c0-c314-447b-8690-60c40facb8a1 | a17m2951s36d93d8f9c0-c314-447b-8690-60c40facb8a2s36d93d8f9c0-c314-447b-8690-60c40facb8a0o10l2
+ 93d8f9c0-c314-447b-8690-60c40facb8a3 | a17m2951s36d93d8f9c0-c314-447b-8690-60c40facb8a2s36d93d8f9c0-c314-447b-8690-60c40facb8a0o10l2
+ 93d8f9c0-c314-447b-8690-60c40facb8a4 | a17m2951s36d93d8f9c0-c314-447b-8690-60c40facb8a2s36d93d8f9c0-c314-447b-8690-60c40facb8a0o10l2
+ 93d8f9c0-c314-447b-8690-60c40facb8a6 | a17m2951s36d93d8f9c0-c314-447b-8690-60c40facb8a2s36d93d8f9c0-c314-447b-8690-60c40facb8a0o10l2
+ 93d8f9c0-c314-447b-8690-60c40facb8a7 | a17m2951s36d93d8f9c0-c314-447b-8690-60c40facb8a2s36d93d8f9c0-c314-447b-8690-60c40facb8a0o10l2
+ 93d8f9c0-c314-447b-8690-60c40facb8a8 | a17m2951s36d93d8f9c0-c314-447b-8690-60c40facb8a2s36d93d8f9c0-c314-447b-8690-60c40facb8a0o10l2
+ 93d8f9c0-c314-447b-8690-60c40facb8a9 | a17m2951s36d93d8f9c0-c314-447b-8690-60c40facb8a2s36d93d8f9c0-c314-447b-8690-60c40facb8a0o10l2
 (7 rows)
 
 SELECT x12, filterValue FROM test_filter WHERE x12 BETWEEN '93d8f9c0-c314-447b-8690-60c40facb8a0'::uuid AND '93d8f9c0-c314-447b-8690-60c40facb8a4'::uuid ORDER BY t0, a1;
@@ -3126,15 +3126,15 @@ SELECT x14, filterValue FROM test_filter WHERE x14 IN  ('{"a":6}' ::jsonb,'{"a":
 (1 row)
 
 SELECT x14, filterValue FROM test_filter WHERE x14 NOT IN ('{"a":8}' ::jsonb,'{"a":4}' ::jsonb) ORDER BY t0, a1;
-   x14    | filtervalue 
-----------+-------------
- {"a": 2} | No filter
- {"a": 3} | No filter
- {"a": 5} | No filter
- {"a": 6} | No filter
- {"a": 7} | No filter
- {"a": 9} | No filter
- {"a": 0} | No filter
+   x14    |           filtervalue           
+----------+---------------------------------
+ {"a": 2} | a19m3807s8d{a: 8}s8d{a: 4}o10l2
+ {"a": 3} | a19m3807s8d{a: 8}s8d{a: 4}o10l2
+ {"a": 5} | a19m3807s8d{a: 8}s8d{a: 4}o10l2
+ {"a": 6} | a19m3807s8d{a: 8}s8d{a: 4}o10l2
+ {"a": 7} | a19m3807s8d{a: 8}s8d{a: 4}o10l2
+ {"a": 9} | a19m3807s8d{a: 8}s8d{a: 4}o10l2
+ {"a": 0} | a19m3807s8d{a: 8}s8d{a: 4}o10l2
 (7 rows)
 
 SELECT x14, filterValue FROM test_filter WHERE x14 BETWEEN '{"a":1}' ::jsonb AND '{"a":4}' ::jsonb ORDER BY t0, a1;
@@ -4308,3 +4308,7 @@ SELECT x33, filterValue FROM test_filter WHERE x33 NOT IN (array['{"a":2}'::json
  {"{\"a\": 9}"} | a38m3807s8d{a: 2}o6a38m3807s8d{a: 0}o6l0
 (8 rows)
 
+-- start_ignore
+-- clean up used tables
+DROP EXTERNAL TABLE IF EXISTS test_filter CASCADE;
+-- end_ignore

@@ -267,79 +267,104 @@ dbop_pxfop_array_map pxf_supported_opr_scalar_array_op_expr[] =
 {
 	/* int2 */
 	{Int2EqualOperator /* int2eq */ , PXFOP_IN, true},
+	{519 /* int2ne */ , PXFOP_NOTIN, false},
 
 	/* int4 */
 	{Int4EqualOperator /* int4eq */ , PXFOP_IN, true},
+	{518 /* int4ne */ , PXFOP_NOTIN, false},
 
 	/* int8 */
 	{Int8EqualOperator /* int8eq */ , PXFOP_IN, true},
+	{411 /* int8ne */ , PXFOP_NOTIN, false},
 
 	/* text */
 	{TextEqualOperator /* texteq  */ , PXFOP_IN, true},
+	{531 /* textne */ , PXFOP_NOTIN, false},
 
 	/* int2 to int4 */
 	{Int24EqualOperator /* int24eq */ , PXFOP_IN,
 	true},
+	{538 /* int24ne */ , PXFOP_NOTIN, false},
 
 	/* int4 to int2 */
 	{Int42EqualOperator /* int42eq */ , PXFOP_IN,
 	true},
+	{539 /* int42ne */ , PXFOP_NOTIN, false},
 
 	/* int8 to int4 */
 	{Int84EqualOperator /* int84eq */ , PXFOP_IN,
 	true},
+	{417 /* int84ne */ , PXFOP_NOTIN, false},
 
 	/* int4 to int8 */
 	{Int48EqualOperator /* int48eq */ , PXFOP_IN,
 	true},
+	{36 /* int48ne */ , PXFOP_NOTIN, false},
 
 	/* int2 to int8 */
 	{Int28EqualOperator /* int28eq */ , PXFOP_IN,
 	true},
+	{1863 /* int28ne */ , PXFOP_NOTIN, false},
 
 	/* int8 to int2 */
 	{Int82EqualOperator /* int82eq */ , PXFOP_IN,
 	true},
+	{1869 /* int82ne */ , PXFOP_NOTIN, false},
 
 	/* date */
 	{DateEqualOperator /* date_eq */ , PXFOP_IN, true},
+	{1094 /* date_ne */ , PXFOP_NOTIN, false},
 
 	/* timestamp */
 	{TimestampEqualOperator /* timestamp_eq */ ,
 	PXFOP_IN, true},
+	{2061 /* date_ne */ , PXFOP_NOTIN, false},
 
 	/* float8 */
 	{Float8EqualOperator /* float8eq */ , PXFOP_IN,
 	true},
+	{671 /* float8ne */ , PXFOP_NOTIN, false},
 
 	/* float48 */
 	{1120 /* float48eq */ , PXFOP_IN, true},
+	{1121 /* float48ne */ , PXFOP_NOTIN, false},
 
 	/* float84 */
 	{Float84EqualOperator /* float84eq */ , PXFOP_IN, true},
+	{1131 /* float84ne */ , PXFOP_NOTIN, false},
 
 	/* float4 */
 	{Float4EqualOperator /* float4eq */ , PXFOP_IN, true},
+	{621 /* float4ne */ , PXFOP_NOTIN, false},
 
 	/* bpchar */
 	{BPCharEqualOperator /* bpchareq */ , PXFOP_IN,
 	true},
+	{1057 /* bpcharne */ , PXFOP_NOTIN, false},
 
 	{BooleanEqualOperator /* booleq */ , PXFOP_IN, true},
+	{85 /* boolne */ , PXFOP_NOTIN, false},
 
 	{ByteaEqualOperator /* byteaeq */ , PXFOP_IN, true},
+	{1956 /* byteane */ , PXFOP_NOTIN, false},
 
 	{TimeEqualOperator /* time_eq */ , PXFOP_IN, true},
+	{1109 /* time_ne */ , PXFOP_NOTIN, false},
 
 	{TimestampTZEqualOperator /* time_eq */ , PXFOP_IN, true},
+	{1321 /* timestamptz_ne */ , PXFOP_NOTIN, false},
 
 	{IntervalEqualOperator /* interval_eq */ , PXFOP_IN, true},
+	{1331 /* interval_ne */ , PXFOP_NOTIN, false},
 
 	{NumericEqualOperator /* numericeq */ , PXFOP_IN, true},
+	{1753 /* numericne */ , PXFOP_NOTIN, false},
 
 	{UuidEqualOperator /* uuid_eq */ , PXFOP_IN, true},
+	{2973 /* uuid_ne */ , PXFOP_NOTIN, false},
 
 	{3240 /* jsonb_eq */ , PXFOP_IN, true},
+	{3241 /* jsonb_ne */ , PXFOP_NOTIN, false},
 };
 
 
@@ -890,7 +915,16 @@ PxfSerializeFilterList(List *filters)
 								 "internal error in pxf_filter.c:PxfSerializeFilterList"
 								 ". Found a non const+attr filter");
 						}
-						appendStringInfo(resbuf, "%c%d", PXF_OPERATOR_CODE, o);
+						/*
+						 * For NOT IN case the negation is applied to PXFOP_IN.
+						 */
+						if (o == PXFOP_NOTIN)
+						{
+							appendStringInfo(resbuf, "%c%d", PXF_OPERATOR_CODE, PXFOP_IN);
+							appendStringInfo(resbuf, "%c%d", PXF_LOGICAL_OPERATOR_CODE, NOT_EXPR);
+						}
+						else
+							appendStringInfo(resbuf, "%c%d", PXF_OPERATOR_CODE, o);
 						PxfFreeFilter(filter);
 					}
 					else

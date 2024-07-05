@@ -402,7 +402,7 @@ SELECT x2, filterValue FROM test_filter WHERE x2 IS NULL ORDER BY t0, a1;
 SELECT x2, filterValue FROM test_filter WHERE x2 IS NOT NULL ORDER BY t0, a1;
 
 -- bigint
-SELECT x3, filterValue FROM test_filter WHERE x3 =  2::int8 ORDER BY t0, a1;
+SELECT x3, filterValue FROM test_filter WHERE x3 =  1::int8 ORDER BY t0, a1;
 SELECT x3, filterValue FROM test_filter WHERE x3 <  2::int8 ORDER BY t0, a1;
 SELECT x3, filterValue FROM test_filter WHERE x3 <= 2::int8 ORDER BY t0, a1;
 SELECT x3, filterValue FROM test_filter WHERE x3 >  2::int8 ORDER BY t0, a1;

@@ -14,7 +14,7 @@ public class FilterPushDownTest extends BaseFeature {
 
     private static final String COMMA = ",";
 
-private static final String[] FIELDS = new String[]{
+    private static final String[] FIELDS = new String[]{
         "t0    text",
         "a1    integer",
         "b2    boolean",
@@ -55,7 +55,7 @@ private static final String[] FIELDS = new String[]{
         "x32   json[]",
         "x33   jsonb[]",
         "filterValue  text"
-};
+    };
 
     /**
      * Check that PXF receives the expected filter string, using a table with a comma delimiter

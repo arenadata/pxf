@@ -89,6 +89,7 @@ dbop_pxfop_map pxf_supported_opr_op_expr[] =
 	{667 /* text_ge */ , PXFOP_GE},
 	{531 /* textlt	*/ , PXFOP_NE},
 	{1209 /* textlike  */ , PXFOP_LIKE},
+	{1210 /* textnlike  */ , PXFOP_NOTLIKE},
 
 	/* int2 to int4 */
 	{Int24EqualOperator /* int24eq */ , PXFOP_EQ},
@@ -202,6 +203,7 @@ dbop_pxfop_map pxf_supported_opr_op_expr[] =
 	{1061 /* bpcharge */ , PXFOP_GE},
 	{1057 /* bpcharne */ , PXFOP_NE},
 	{1211 /* bpcharlike */ , PXFOP_LIKE},
+	{1212 /* bpcharnlike */ , PXFOP_NOTLIKE},
 
 	/* numeric */
 	{NumericEqualOperator /* numericeq */ , PXFOP_EQ},
@@ -222,6 +224,8 @@ dbop_pxfop_map pxf_supported_opr_op_expr[] =
 	{1958 /* byteale */ , PXFOP_LE},
 	{1960 /* byteage */ , PXFOP_GE},
 	{1956 /* byteane */ , PXFOP_NE},
+	{2016 /* bytealike */ , PXFOP_LIKE},
+	{2017 /* byteanlike */ , PXFOP_NOTLIKE},
 
 	/* time */
 	{TimeEqualOperator /* time_eq */ , PXFOP_EQ},
@@ -856,7 +860,16 @@ PxfSerializeFilterList(List *filters)
 								 "internal error in pxf_filter.c:PxfSerializeFilterList"
 								 ". Found a non const+attr filter");
 						}
-						appendStringInfo(resbuf, "%c%d", PXF_OPERATOR_CODE, o);
+						/*
+						 * For NOT LIKE case the negation is applied to PXFOP_LIKE.
+						 */
+						if (o == PXFOP_NOTLIKE)
+						{
+							appendStringInfo(resbuf, "%c%d", PXF_OPERATOR_CODE, PXFOP_LIKE);
+							appendStringInfo(resbuf, "%c%d", PXF_LOGICAL_OPERATOR_CODE, NOT_EXPR);
+						}
+						else
+							appendStringInfo(resbuf, "%c%d", PXF_OPERATOR_CODE, o);
 						PxfFreeFilter(filter);
 					}
 					else

@@ -56,6 +56,7 @@ typedef enum PxfOperatorCode
 	 * serialized operators. NOT LIKE -> NOT (LIKE)
 	 */
 	PXFOP_NOTIN,
+	PXFOP_NOTLIKE
 
 }	PxfOperatorCode;
 

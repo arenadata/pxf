@@ -450,7 +450,9 @@ SELECT x6, filterValue FROM test_filter WHERE x6 <= '\132greenplum\132'::bytea O
 SELECT x6, filterValue FROM test_filter WHERE x6 > '\132greenplum'::bytea ORDER BY t0, a1;
 SELECT x6, filterValue FROM test_filter WHERE x6 >= '\132greenplum\132'::bytea ORDER BY t0, a1;
 SELECT x6, filterValue FROM test_filter WHERE x6 <> '\132greeenplum\132'::bytea ORDER BY t0, a1;
-SELECT x6, filterValue FROM test_filter WHERE x6  IN ('\132greenplum\132'::bytea,'sdas\132'::bytea) ORDER BY t0, a1;
+SELECT x6, filterValue FROM test_filter WHERE x6 LIKE '\132gre%' ORDER BY t0, a1;
+SELECT x6, filterValue FROM test_filter WHERE x6 NOT LIKE 'green%' ORDER BY t0, a1;
+SELECT x6, filterValue FROM test_filter WHERE x6 IN ('\132greenplum\132'::bytea,'sdas\132'::bytea) ORDER BY t0, a1;
 SELECT x6, filterValue FROM test_filter WHERE x6 NOT IN ('\132grenplum\132'::bytea,'sdas\132'::bytea) ORDER BY t0, a1;
 SELECT x6, filterValue FROM test_filter WHERE x6 BETWEEN '\132greenplum\132'::bytea AND 'sdas\132'::bytea ORDER BY t0, a1;
 SELECT x6, filterValue FROM test_filter WHERE x6 NOT BETWEEN '\132greenplup\132'::bytea AND 'sdas\132'::bytea ORDER BY t0, a1;

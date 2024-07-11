@@ -223,7 +223,7 @@ SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE t0 NOT IN ('C'
  G  |  6 | t  | 6.61 | GG | GG | a0m1009s1dCs1dDo10l2
  H  |  7 | f  | 7.71 | HH | HH | a0m1009s1dCs1dDo10l2
  I  |  8 | t  | 8.81 | II | II | a0m1009s1dCs1dDo10l2
- J  |  9 | f  | 9.91 | JJ | JJ | a0m1009s1dCs1dDo10l
+ J  |  9 | f  | 9.91 | JJ | JJ | a0m1009s1dCs1dDo10l2
 (7 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE t0 BETWEEN     'B' AND 'D' ORDER BY t0, a1;

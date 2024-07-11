@@ -440,10 +440,10 @@ SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE c3 <> 1.11 ORD
 (8 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE c3 IN     (1.11,2.21) ORDER BY t0, a1;
- t0 | a1 | b2 |  c3  | d4  | e5 | filtervalue
-----+----+----+------+-----+----+-------------
- B  |    | f  | 1.11 | BB  | BB | No filter
- C  |  2 |    | 2.21 | CC  | CC | No filter
+ t0 | a1 | b2 |  c3  | d4 | e5 |       filtervalue        
+----+----+----+------+----+----+--------------------------
+ B  |    | f  | 1.11 | BB | BB | a3m1231s4d1.11s4d2.21o10
+ C  |  2 |    | 2.21 | CC | CC | a3m1231s4d1.11s4d2.21o10
 (2 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE c3 NOT IN (1.11,2.21) ORDER BY t0, a1;

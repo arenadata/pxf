@@ -721,10 +721,10 @@ SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE e5 NOT LIKE 'B
 (8 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE e5 IN     ('BB','CC') ORDER BY t0, a1;
- t0 | a1 | b2 |  c3  | d4  | e5 | filtervalue 
-----+----+----+------+-----+----+-------------
- B  |    | f  | 1.11 | BB  | BB | No filter
- C  |  2 |    | 2.21 | CC  | CC | No filter
+ t0 | a1 | b2 |  c3  | d4 | e5 |     filtervalue      
+----+----+----+------+----+----+----------------------
+ B  |    | f  | 1.11 | BB | BB | a4m1014s2dBBs2dCCo10
+ C  |  2 |    | 2.21 | CC | CC | a4m1014s2dBBs2dCCo10
 (2 rows)
 
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter WHERE e5 NOT IN ('BB','CC') ORDER BY t0, a1;

@@ -2,13 +2,14 @@
 
 GPHOME=${GPHOME:=/usr/local/greenplum-db-devel}
 PXF_HOME=${PXF_HOME:=${GPHOME}/pxf}
-MDD_VALUE=/data/gpdata/master/gpseg-1
+CDD_VALUE=/data/gpdata/coordinator/gpseg-1
 PXF_COMMON_SRC_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PXF_VERSION=${PXF_VERSION:=6}
 PROXY_USER=${PROXY_USER:-pxfuser}
 PROTOCOL=${PROTOCOL:-}
 GOOGLE_PROJECT_ID=${GOOGLE_PROJECT_ID:-data-gpdb-ud}
 PXF_SRC=$(find /tmp/build -name pxf_src -type d)
+CCP_OS_USER=""
 
 # on purpose do not call this PXF_CONF|PXF_BASE so that it is not set during pxf operations
 if [[ ${PXF_VERSION} == 5 ]]; then
@@ -22,7 +23,8 @@ else
 fi
 
 if [[ -f ~/.pxfrc ]]; then
-	source <(grep JAVA_HOME ~/.pxfrc)
+	# shellcheck disable=SC1090
+	source <(grep "export JAVA_HOME" ~/.pxfrc)
 	echo "JAVA_HOME found in ${HOME}/.pxfrc, set to ${JAVA_HOME}..."
 else
 	JAVA_HOME=$(find /usr/lib/jvm -name 'java-1.8.0-openjdk*' | head -1)
@@ -51,11 +53,6 @@ function inflate_dependencies() {
 		tarballs+=(regression-tools/regression-tools.tar.gz)
 	fi
 
-	# when running automation against GP7, we need python2 dependencies shipped with gp6 to make Tinc work
-	# if required, these libraries will be fetched by a CI pipeline under gp6-python-libs directory
-	if [[ -f gp6-python-libs/gp6-python-libs.tar.gz ]]; then
-		tarballs+=(gp6-python-libs/gp6-python-libs.tar.gz)
-	fi
 	(( ${#tarballs[@]} == 0 )) && return
 	for t in "${tarballs[@]}"; do
 		tar -xzf "${t}" -C ~gpadmin
@@ -84,6 +81,66 @@ function set_env() {
 	export TIMEFORMAT=$'\e[4;33mIt took %R seconds to complete this step\e[0m';
 }
 
+function run_pxf_automation() {
+	# Let's make sure that automation/singlecluster directories are writeable
+	chmod a+w pxf_src/automation pxf_src/automation/pxf_regress /singlecluster || true
+	find pxf_src/automation/sqlrepo -type d -exec chmod a+w {} \;
+
+	local extension_name="pxf"
+	if [[ ${USE_FDW} == "true" ]]; then
+		extension_name="pxf_fdw"
+	fi
+
+	#TODO: remove once exttable tests with GP7 are set
+	if [[ ${GROUP} == fdw_gpdb_schedule ]]; then
+		extension_name="pxf_fdw"
+	fi
+
+	su gpadmin -c "
+		source '${GPHOME}/greenplum_path.sh' &&
+		psql -p ${PGPORT} -d template1 -c 'CREATE EXTENSION IF NOT EXISTS ${extension_name}'
+	"
+	# prepare certification output directory
+	mkdir -p certification
+	chmod a+w certification
+
+	cat > ~gpadmin/run_pxf_automation_test.sh <<-EOF
+		#!/usr/bin/env bash
+		set -exo pipefail
+
+		source ~gpadmin/.pxfrc
+
+		export PATH=\$PATH:${GPHD_ROOT}/bin
+		export GPHD_ROOT=${GPHD_ROOT}
+		export PXF_HOME=${PXF_HOME}
+		export PGPORT=${PGPORT}
+		export USE_FDW=${USE_FDW}
+
+		cd pxf_src/automation
+		time make GROUP=${GROUP} test
+
+		# if the test is successful, create certification file
+		gpdb_build_from_sql=\$(source \$GPHOME/greenplum_path.sh && psql -c 'select version()' | grep Greenplum | cut -d ' ' -f 6,8)
+		gpdb_build_clean=\${gpdb_build_from_sql%)}
+		pxf_version=\$(< ${PXF_HOME}/version)
+		echo "GPDB-\${gpdb_build_clean/ commit:/-}-PXF-\${pxf_version}" > "${PWD}/certification/certification.txt"
+		echo
+		echo '****************************************************************************************************'
+		echo "Wrote certification : \$(< ${PWD}/certification/certification.txt)"
+		echo '****************************************************************************************************'
+	EOF
+
+	chown gpadmin:gpadmin ~gpadmin/run_pxf_automation_test.sh
+	chmod a+x ~gpadmin/run_pxf_automation_test.sh
+
+	if [[ ${ACCEPTANCE} == true ]]; then
+		echo 'Acceptance test pipeline'
+		exit 1
+	fi
+
+	su gpadmin -c ~gpadmin/run_pxf_automation_test.sh
+}
+
 function run_regression_test() {
 	ln -s "${PWD}/gpdb_src" ~gpadmin/gpdb_src
 	cat > ~gpadmin/run_regression_test.sh <<-EOF
@@ -107,6 +164,36 @@ function run_regression_test() {
 	su gpadmin -c ~gpadmin/run_regression_test.sh
 }
 
+function run_load_test() {
+	local extension_name="pxf"
+	su gpadmin -c "
+		source '${GPHOME}/greenplum_path.sh' &&
+		psql -p ${PGPORT} -d template1 -c 'CREATE EXTENSION IF NOT EXISTS ${extension_name}'
+	"
+
+	cat > ~gpadmin/run_load_test.sh <<-EOF
+		#!/usr/bin/env bash
+		set -exo pipefail
+
+		source ~gpadmin/.pxfrc
+		source ${GPHOME}/greenplum_path.sh
+		export PGPORT=${PGPORT}
+
+		cd pxf_src/load
+		time make
+
+		echo
+		echo '****************************************************************************************************'
+		echo 'Load test Successful'
+		echo '****************************************************************************************************'
+
+	EOF
+
+	chown gpadmin:gpadmin ~gpadmin/run_load_test.sh
+	chmod a+x ~gpadmin/run_load_test.sh
+	su gpadmin -c ~gpadmin/run_load_test.sh
+}
+
 function build_install_gpdb() {
 
 	bash -c "
@@ -122,6 +209,12 @@ function build_install_gpdb() {
 }
 
 function install_gpdb_binary() {
+	# TODO Remove the chown once the ownership of /home/gpadmin is correctly set
+	# In concourse 7.8.x, even though the base pxf dev image correctly gave
+	# gpadmin permissions to /home/gpadmin, the change is not respected
+	# So we have added this chown here to ensure gpadmin owns its home directory
+	chown -R gpadmin:gpadmin /home/gpadmin
+
 	if [[ -d bin_gpdb ]]; then
 		mkdir -p ${GPHOME}
 		tar -xzf bin_gpdb/*.tar.gz -C ${GPHOME}
@@ -141,11 +234,15 @@ function install_gpdb_binary() {
 		python_dir=python${python_version}/dist-packages
 		export_pythonpath+=:/usr/local/lib/$python_dir
 	fi
-
-	echo "$export_pythonpath" >> "${PXF_SRC}/automation/tinc/main/tinc_env.sh"
 }
 
 function install_gpdb_package() {
+	# TODO Remove the chown once the ownership of /home/gpadmin is correctly set
+	# In concourse 7.8.x, even though the base pxf dev image correctly gave
+	# gpadmin permissions to /home/gpadmin, the change is not respected
+	# So we have added this chown here to ensure gpadmin owns its home directory
+	chown -R gpadmin:gpadmin /home/gpadmin
+
 	local gphome python_dir python_version=2.7 export_pythonpath='export PYTHONPATH=$PYTHONPATH' pkg_file version
 	gpdb_package=${PWD}/${GPDB_PKG_DIR:-gpdb_package}
 
@@ -181,13 +278,13 @@ function install_gpdb_package() {
 		exit 1
 	fi
 
-	echo "$export_pythonpath" >> "${PXF_SRC}/automation/tinc/main/tinc_env.sh"
-
 	# create symlink to allow pgregress to run (hardcoded to look for /usr/local/greenplum-db-devel/psql)
 	rm -rf /usr/local/greenplum-db-devel
-	# get version from the package file name
-	: "${pkg_file#*greenplum-db-}"
-	version=${_%%-*}
+	# obtain full version name
+	local gpdb_version
+	gpdb_version="$(<"${gpdb_package}/version")"
+	# in case of dev builds, get simplified version from the version file
+	local version="${gpdb_version%%+*}"
 	gphome_dir=$(find /usr/local/ -name "greenplum-db-${version}*" -type d)
 	ln -sf "${gphome_dir}" /usr/local/greenplum-db-devel
 	# change permissions to gpadmin
@@ -207,11 +304,11 @@ function remote_access_to_gpdb() {
 	cp cluster_env_files/.ssh/* /home/gpadmin/.ssh
 	cp cluster_env_files/.ssh/*.pem /home/gpadmin/.ssh/id_rsa
 	cp cluster_env_files/public_key.openssh /home/gpadmin/.ssh/authorized_keys
-	{ ssh-keyscan localhost; ssh-keyscan 0.0.0.0; } >> /home/gpadmin/.ssh/known_hosts
-	ssh "${SSH_OPTS[@]}" gpadmin@mdw "
+	awk '{print "localhost", $1, $2; print "0.0.0.0", $1, $2}' /etc/ssh/ssh_host_rsa_key.pub >> /home/gpadmin/.ssh/known_hosts
+	ssh "${SSH_OPTS[@]}" gpadmin@cdw "
 		source ${GPHOME}/greenplum_path.sh &&
-		export MASTER_DATA_DIRECTORY=${MDD_VALUE} &&
-		echo 'host all all 10.0.0.0/16 trust' >> ${MDD_VALUE}/pg_hba.conf &&
+		export MASTER_DATA_DIRECTORY=${CDD_VALUE} &&
+		echo 'host all all 10.0.0.0/16 trust' >> ${CDD_VALUE}/pg_hba.conf &&
 		psql -d template1 <<-EOF && gpstop -u
 			CREATE EXTENSION pxf;
 			CREATE DATABASE gpadmin;
@@ -252,7 +349,7 @@ function setup_gpadmin_user() {
 		ssh-keygen -t rsa -N "" -f ~gpadmin/.ssh/id_rsa
 		cat /home/gpadmin/.ssh/id_rsa.pub >> ~gpadmin/.ssh/authorized_keys
 		chmod 0600 /home/gpadmin/.ssh/authorized_keys
-		{ ssh-keyscan localhost; ssh-keyscan 0.0.0.0; } >> ~gpadmin/.ssh/known_hosts
+		awk '{print "localhost", $1, $2; print "0.0.0.0", $1, $2}' /etc/ssh/ssh_host_rsa_key.pub >> ~gpadmin/.ssh/known_hosts
 		chown -R gpadmin:gpadmin ${GPHOME} ~gpadmin/.ssh # don't chown cached dirs ~/.m2, etc.
 		echo -e "password\npassword" | passwd gpadmin 2> /dev/null
 	fi
@@ -299,9 +396,20 @@ function install_pxf_server() {
 
 function install_pxf_tarball() {
 	local tarball_dir=${PXF_PKG_DIR:-pxf_tarball}
-	tar -xzf "${tarball_dir}/"pxf-*.tar.gz -C /tmp
+	tar -xzf "${tarball_dir}/"pxf-gp*.tar.gz -C /tmp
 	/tmp/pxf*/install_component
 	chown -R gpadmin:gpadmin "${PXF_HOME}"
+
+	# install separately built PXF FDW extension if it is available on the inputs
+	local fdw_tarball_dir=${PXF_PKG_DIR:-pxf_fdw_tarball}
+	if compgen -G "${fdw_tarball_dir}/pxf-fdw-*.tar.gz" > /dev/null; then
+		tar -xzf "${fdw_tarball_dir}/"pxf-fdw-*.tar.gz -C /tmp
+		chmod 777 /tmp
+		ls -al /tmp
+		/usr/bin/install -c -m 755 /tmp/pxf_fdw.so "$("${GPHOME}/bin/pg_config" --pkglibdir)"
+		/usr/bin/install -c -m 644 /tmp/pxf_fdw.control "$("${GPHOME}/bin/pg_config" --sharedir)/extension/"
+		/usr/bin/install -c -m 644 /tmp/pxf_fdw*.sql "$("${GPHOME}/bin/pg_config" --sharedir)/extension/"
+	fi
 }
 
 function install_pxf_package() {
@@ -379,6 +487,19 @@ function setup_impersonation() {
 	if ! find "${GPHD_ROOT}/hbase/lib" -name 'pxf-hbase-*.jar' | grep pxf-hbase; then
 		cp "${SHARE_DIR}"/pxf-hbase-*.jar "${GPHD_ROOT}/hbase/lib"
 	fi
+}
+
+function setup_hadoop() {
+	local hdfsrepo=$1
+
+	[[ -z ${GROUP} ]] && return 0
+
+	export SLAVES=1
+	setup_impersonation "${hdfsrepo}"
+	if grep 'hadoop-3' "${hdfsrepo}/versions.txt"; then
+		adjust_for_hadoop3 "${hdfsrepo}"
+	fi
+	start_hadoop_services "${hdfsrepo}"
 }
 
 function adjust_for_hadoop3() {
@@ -502,6 +623,9 @@ function configure_pxf_server() {
 		echo 'JDK 11 requested for runtime, setting PXF JAVA_HOME=/usr/lib/jvm/jdk-11 in pxf-env.sh'
 		su gpadmin -c "echo 'export JAVA_HOME=/usr/lib/jvm/jdk-11' >> ${BASE_DIR}/conf/pxf-env.sh"
 	fi
+
+	# add property to allow dynamic test: profiles that are used when testing against FDW
+	echo -e "\npxf.profile.dynamic.regex=test:.*" >> "${BASE_DIR}/conf/pxf-application.properties"
 }
 
 function configure_hdfs_client_for_s3() {
@@ -654,54 +778,15 @@ function configure_pxf_wasbs_server() {
 }
 
 function configure_pxf_default_server() {
-	AMBARI_DIR=$(find /tmp/build/ -name ambari_env_files)
-	if [[ -n $AMBARI_DIR  ]]; then
-	  AMBARI_KEYTAB_FILE=$(find "$AMBARI_DIR" -name "*.keytab")
-		cp "${AMBARI_DIR}"/conf/*-site.xml "${BASE_DIR}/servers/default"
-
-		if [[ -n $AMBARI_KEYTAB_FILE ]]; then
-			REALM=$(cat "$AMBARI_DIR"/REALM)
-			HADOOP_USER=$(cat "$AMBARI_DIR"/HADOOP_USER)
-			cp ${TEMPLATES_DIR}/templates/mapred-site.xml ${BASE_DIR}/servers/default/mapred1-site.xml
-			cp ${TEMPLATES_DIR}/templates/pxf-site.xml ${BASE_DIR}/servers/default/pxf-site.xml
-			sed -i -e "s|gpadmin/_HOST@EXAMPLE.COM|${HADOOP_USER}@${REALM}|g" ${BASE_DIR}/servers/default/pxf-site.xml
-			if [[ ${PXF_VERSION} == 5 ]]; then
-				sed -i -e "s|\${pxf.conf}/keytabs/pxf.service.keytab|$AMBARI_KEYTAB_FILE|g" ${BASE_DIR}/servers/default/pxf-site.xml
-			else
-				sed -i -e "s|\${pxf.base}/keytabs/pxf.service.keytab|$AMBARI_KEYTAB_FILE|g" ${BASE_DIR}/servers/default/pxf-site.xml
-			fi
-			sed -i -e "s|\${user.name}||g" ${BASE_DIR}/servers/default/pxf-site.xml
-			sudo mkdir -p /etc/security/keytabs/
-			sudo cp "$AMBARI_KEYTAB_FILE" /etc/security/keytabs/"${HADOOP_USER}".headless.keytab
-			sudo chown gpadmin:gpadmin /etc/security/keytabs/"${HADOOP_USER}".headless.keytab
-
-			mkdir -p ${BASE_DIR}/servers/db-hive/
-			cp ${BASE_DIR}/servers/default/pxf-site.xml ${BASE_DIR}/servers/db-hive/
-			cp ${TEMPLATES_DIR}/templates/jdbc-site.xml ${BASE_DIR}/servers/db-hive/
-
-			REALM=$(cat "$AMBARI_DIR"/REALM)
-			HIVE_HOSTNAME=$(grep < "$AMBARI_DIR"/etc_hostfile ambari-2 | awk '{print $2}')
-			KERBERIZED_HADOOP_URI="hive/${HIVE_HOSTNAME}.c.${GOOGLE_PROJECT_ID}.internal@${REALM};saslQop=auth" # quoted because of semicolon
-			sed -i -e 's|YOUR_DATABASE_JDBC_DRIVER_CLASS_NAME|org.apache.hive.jdbc.HiveDriver|' \
-				-e "s|YOUR_DATABASE_JDBC_URL|jdbc:hive2://${HIVE_HOSTNAME}:10000/default;principal=${KERBERIZED_HADOOP_URI}|" \
-				-e 's|YOUR_DATABASE_JDBC_USER||' \
-				-e 's|YOUR_DATABASE_JDBC_PASSWORD||' \
-				-e 's|</configuration>|<property><name>hadoop.security.authentication</name><value>kerberos</value></property></configuration>|g' \
-				${BASE_DIR}/servers/db-hive/jdbc-site.xml
-
-			cp "${PXF_SRC}"/automation/src/test/resources/hive-report.sql ${BASE_DIR}/servers/db-hive/
-		fi
-	else
-		# copy hadoop config files to BASE_DIR/servers/default
-		if [[ -d /etc/hadoop/conf/ ]]; then
-			cp /etc/hadoop/conf/*-site.xml "${BASE_DIR}/servers/default"
-		fi
-		if [[ -d /etc/hive/conf/ ]]; then
-			cp /etc/hive/conf/*-site.xml "${BASE_DIR}/servers/default"
-		fi
-		if [[ -d /etc/hbase/conf/ ]]; then
-			cp /etc/hbase/conf/*-site.xml "${BASE_DIR}/servers/default"
-		fi
+	# copy hadoop config files to BASE_DIR/servers/default
+	if [[ -d /etc/hadoop/conf/ ]]; then
+		cp /etc/hadoop/conf/*-site.xml "${BASE_DIR}/servers/default"
+	fi
+	if [[ -d /etc/hive/conf/ ]]; then
+		cp /etc/hive/conf/*-site.xml "${BASE_DIR}/servers/default"
+	fi
+	if [[ -d /etc/hbase/conf/ ]]; then
+		cp /etc/hbase/conf/*-site.xml "${BASE_DIR}/servers/default"
 	fi
 
 	if [[ ${IMPERSONATION} == true ]]; then
@@ -776,4 +861,24 @@ function setup_minio() {
 
 	# export minio credentials as access environment variables
 	export ACCESS_KEY_ID=${MINIO_ACCESS_KEY} SECRET_ACCESS_KEY=${MINIO_SECRET_KEY}
+}
+
+function set_ccp_os_user() {
+    metadata_file="cluster_env_files/terraform/metadata"
+
+    # TODO: Remove the jq installation from here once available in the base image.
+    # Check if jq is installed
+    if ! rpm -q jq &> /dev/null; then
+        echo "jq is not installed. Installing jq..."
+        sudo yum install -y jq
+    fi
+
+    # Check if the metadata file exists
+    if [ ! -e "$metadata_file" ]; then
+        echo "The $metadata_file file does not exist."
+        exit 2
+    fi
+
+    # shellcheck disable=SC2034
+    CCP_OS_USER=$(jq -r '.ami_default_user' "$metadata_file")
 }

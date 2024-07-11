@@ -39,7 +39,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.anyInt;
@@ -486,12 +489,41 @@ public class JdbcBasePluginTest {
     }
 
     @Test
-    public void testDateWideRangeFromConfiguration() throws SQLException {
+    public void testDateWideRangeFromConfiguration() {
+        configuration.set("jdbc.driver", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver");
+        configuration.set("jdbc.url", "test-url");
+        configuration.set("jdbc.date.wideRange", "true");
+        JdbcBasePlugin plugin = getPlugin(mockConnectionManager, mockSecureLogin, context);
+        assertTrue(plugin.isDateWideRange);
+    }
+
+    @Test
+    public void testDateWideRangeLegacyFromConfiguration(){
         configuration.set("jdbc.driver", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver");
         configuration.set("jdbc.url", "test-url");
         configuration.set("jdbc.date.wide-range", "true");
         JdbcBasePlugin plugin = getPlugin(mockConnectionManager, mockSecureLogin, context);
         assertTrue(plugin.isDateWideRange);
+    }
+
+    @Test
+    public void testValidBatchTimeout(){
+        int batchTimeout = 10;
+        configuration.set("jdbc.driver", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver");
+        configuration.set("jdbc.url", "test-url");
+        configuration.set("jdbc.statement.batchTimeout", String.valueOf(batchTimeout));
+        JdbcBasePlugin plugin = getPlugin(mockConnectionManager, mockSecureLogin, context);
+        assertEquals(batchTimeout, plugin.batchTimeout);
+    }
+
+    @Test
+    public void testInvalidBatchTimeout() {
+        int batchTimeout = -5;
+        configuration.set("jdbc.driver", "org.greenplum.pxf.plugins.jdbc.FakeJdbcDriver");
+        configuration.set("jdbc.url", "test-url");
+        configuration.set("jdbc.statement.batchTimeout", String.valueOf(batchTimeout));
+        assertThrows(IllegalArgumentException.class,
+                () -> getPlugin(mockConnectionManager, mockSecureLogin, context));
     }
 
     private JdbcBasePlugin getPlugin(ConnectionManager mockConnectionManager, SecureLogin mockSecureLogin, RequestContext context) {

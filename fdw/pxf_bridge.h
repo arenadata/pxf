@@ -52,6 +52,8 @@ typedef struct PxfFdwScanState
 	List	   *retrieved_attrs;
 	PxfOptions *options;
 	CopyState	cstate;
+	ProjectionInfo *projectionInfo;
+	void           *pxfcstate;
 } PxfFdwScanState;
 
 /*
@@ -74,6 +76,7 @@ typedef struct PxfFdwModifyState
 } PxfFdwModifyState;
 
 /* Clean up churl related data structures from the context */
+void		PxfBridgeImportCleanup(PxfFdwScanState *pxfsstate);
 void		PxfBridgeCleanup(PxfFdwModifyState *context);
 
 /* Sets up data before starting import */

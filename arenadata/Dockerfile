@@ -1,10 +1,30 @@
 FROM hub.adsw.io/library/gpdb6_regress:latest as base
 
 # install go, ginkgo and keep env variables which may be used as a part of base image
-RUN yum install -y go
+RUN set -eux; \
+    ARCH="$(uname -m)"; \
+    case "${ARCH}" in \
+       aarch64|armhf|armv7l|amd64|x86_64) \
+         wget https://go.dev/dl/go1.21.3.linux-amd64.tar.gz \
+         && rm -rf /usr/local/go && tar -C /usr/local -xzf go1.21.3.linux-amd64.tar.gz && rm go1.21.3.linux-amd64.tar.gz \
+         ;; \
+       arm64) \
+         wget https://go.dev/dl/go1.21.3.linux-arm64.tar.gz \
+         && rm -rf /usr/local/go && tar -C /usr/local -xzf go1.21.3.linux-arm64.tar.gz && rm go1.21.3.linux-arm64.tar.gz \
+         ;; \
+       ppc64el|ppc64le) \
+         wget https://go.dev/dl/go1.21.3.linux-ppc64le.tar.gz \
+         && rm -rf /usr/local/go && tar -C /usr/local -xzf go1.21.3.linux-ppc64le.tar.gz && rm go1.21.3.linux-ppc64le.tar.gz \
+         ;; \
+       *) \
+         echo "Unsupported arch: ${ARCH}"; \
+         exit 1; \
+         ;; \
+    esac;
 ENV GOPATH=$HOME/go
 ENV PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
 RUN go install github.com/onsi/ginkgo/ginkgo@latest
+RUN go install github.com/onsi/ginkgo/v2/ginkgo@latest
 
 # leave pxf artifacts dir env also
 ENV OUTPUT_ARTIFACT_DIR="pxf_tarball"
@@ -25,6 +45,7 @@ RUN source gpdb_src/concourse/scripts/common.bash && \
     install_gpdb && \
     source '/usr/local/greenplum-db-devel/greenplum_path.sh' && \
     mkdir ${OUTPUT_ARTIFACT_DIR} && \
+    export SKIP_FDW_BUILD_REASON=0 && \
     pxf_src/concourse/scripts/compile_pxf.bash
 
 # create test image which prepares base image and keeps only pxf artifacts from build image

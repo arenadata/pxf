@@ -43,6 +43,8 @@ under the License.
             <mapping option="batch_size" property="jdbc.statement.batchSize"/>
             <mapping option="fetch_size" property="jdbc.statement.fetchSize"/>
             <mapping option="query_timeout" property="jdbc.statement.queryTimeout"/>
+            <mapping option="batch_timeout" property="jdbc.statement.batchTimeout"/>
+            <mapping option="date_wide_range" property="jdbc.date.wideRange"/>
         </optionMappings>
     </profile>
 
@@ -262,6 +264,17 @@ under the License.
         </plugins>
     </profile>
     <profile>
+        <name>hdfs:fixedwidth</name>
+        <description>This profile is suitable for using when reading fixed field length single line records
+            from plain text files on HDFS.
+        </description>
+        <plugins>
+            <fragmenter>org.greenplum.pxf.plugins.hdfs.HdfsDataFragmenter</fragmenter>
+            <accessor>org.greenplum.pxf.plugins.hdfs.LineBreakAccessor</accessor>
+            <resolver>org.greenplum.pxf.plugins.hdfs.StringPassResolver</resolver>
+        </plugins>
+    </profile>
+    <profile>
         <name>s3:text</name>
         <description>This profile is suitable for using when reading delimited single line records
             from plain text, tab-delimited, files on S3
@@ -313,6 +326,23 @@ under the License.
         </optionMappings>
     </profile>
     <profile>
+        <name>s3:fixedwidth</name>
+        <description>This profile is suitable for using when reading fixed field length single line records
+            from plain text files on S3.
+        </description>
+        <plugins>
+            <fragmenter>org.greenplum.pxf.plugins.hdfs.HdfsDataFragmenter</fragmenter>
+            <accessor>org.greenplum.pxf.plugins.hdfs.LineBreakAccessor</accessor>
+            <resolver>org.greenplum.pxf.plugins.hdfs.StringPassResolver</resolver>
+        </plugins>
+        <protocol>s3a</protocol>
+        <handler>org.greenplum.pxf.plugins.s3.S3ProtocolHandler</handler>
+        <optionMappings>
+            <mapping option="accesskey" property="fs.s3a.access.key"/>
+            <mapping option="secretkey" property="fs.s3a.secret.key"/>
+        </optionMappings>
+    </profile>
+    <profile>
         <name>adl:text</name>
         <description>This profile is suitable for using when reading delimited single line records
             from plain text, tab-delimited, files on Azure Data Lake
@@ -345,6 +375,18 @@ under the License.
         <plugins>
             <fragmenter>org.greenplum.pxf.plugins.hdfs.HdfsFileFragmenter</fragmenter>
             <accessor>org.greenplum.pxf.plugins.hdfs.QuotedLineBreakAccessor</accessor>
+            <resolver>org.greenplum.pxf.plugins.hdfs.StringPassResolver</resolver>
+        </plugins>
+        <protocol>adl</protocol>
+    </profile>
+    <profile>
+        <name>adl:fixedwidth</name>
+        <description>This profile is suitable for using when reading fixed field length single line records
+            from plain text files on Azure Data Lake
+        </description>
+        <plugins>
+            <fragmenter>org.greenplum.pxf.plugins.hdfs.HdfsDataFragmenter</fragmenter>
+            <accessor>org.greenplum.pxf.plugins.hdfs.LineBreakAccessor</accessor>
             <resolver>org.greenplum.pxf.plugins.hdfs.StringPassResolver</resolver>
         </plugins>
         <protocol>adl</protocol>
@@ -387,9 +429,21 @@ under the License.
         <protocol>wasbs</protocol>
     </profile>
     <profile>
+        <name>wasbs:fixedwidth</name>
+        <description>This profile is suitable for using when reading fixed field length single line records
+            from plain text files on Azure Blob Storage
+        </description>
+        <plugins>
+            <fragmenter>org.greenplum.pxf.plugins.hdfs.HdfsDataFragmenter</fragmenter>
+            <accessor>org.greenplum.pxf.plugins.hdfs.LineBreakAccessor</accessor>
+            <resolver>org.greenplum.pxf.plugins.hdfs.StringPassResolver</resolver>
+        </plugins>
+        <protocol>wasbs</protocol>
+    </profile>
+    <profile>
         <name>gs:text</name>
         <description>This profile is suitable for using when reading delimited single line records
-            from plain text, tab-delimited, files on Azure Data Lake
+            from plain text, tab-delimited, files on Google Cloud Storage
         </description>
         <plugins>
             <fragmenter>org.greenplum.pxf.plugins.hdfs.HdfsDataFragmenter</fragmenter>
@@ -401,7 +455,7 @@ under the License.
     <profile>
         <name>gs:csv</name>
         <description>This profile is suitable for using when reading delimited single line records
-            from plain text CSV files on Azure Data Lake
+            from plain text CSV files on Google Cloud Storage
         </description>
         <plugins>
             <fragmenter>org.greenplum.pxf.plugins.hdfs.HdfsDataFragmenter</fragmenter>
@@ -413,12 +467,24 @@ under the License.
     <profile>
         <name>gs:text:multi</name>
         <description>This profile is suitable for using when reading delimited single or multi line
-            records (with quoted linefeeds) from plain text files on HDFS. It is not splittable (non
+            records (with quoted linefeeds) from plain text files on Google Cloud Storage. It is not splittable (non
             parallel) and slower than HdfsTextSimple.
         </description>
         <plugins>
             <fragmenter>org.greenplum.pxf.plugins.hdfs.HdfsFileFragmenter</fragmenter>
             <accessor>org.greenplum.pxf.plugins.hdfs.QuotedLineBreakAccessor</accessor>
+            <resolver>org.greenplum.pxf.plugins.hdfs.StringPassResolver</resolver>
+        </plugins>
+        <protocol>gs</protocol>
+    </profile>
+    <profile>
+        <name>gs:fixedwidth</name>
+        <description>This profile is suitable for using when reading fixed field length single line records
+            from plain text files on Google Cloud Storage
+        </description>
+        <plugins>
+            <fragmenter>org.greenplum.pxf.plugins.hdfs.HdfsDataFragmenter</fragmenter>
+            <accessor>org.greenplum.pxf.plugins.hdfs.LineBreakAccessor</accessor>
             <resolver>org.greenplum.pxf.plugins.hdfs.StringPassResolver</resolver>
         </plugins>
         <protocol>gs</protocol>
@@ -454,6 +520,17 @@ under the License.
         <plugins>
             <fragmenter>org.greenplum.pxf.plugins.hdfs.HdfsFileFragmenter</fragmenter>
             <accessor>org.greenplum.pxf.plugins.hdfs.QuotedLineBreakAccessor</accessor>
+            <resolver>org.greenplum.pxf.plugins.hdfs.StringPassResolver</resolver>
+        </plugins>
+    </profile>
+    <profile>
+        <name>file:fixedwidth</name>
+        <description>This profile is suitable for using when reading fixed field length single line records
+            from plain text files on network mounted filesystems.
+        </description>
+        <plugins>
+            <fragmenter>org.greenplum.pxf.plugins.hdfs.HdfsDataFragmenter</fragmenter>
+            <accessor>org.greenplum.pxf.plugins.hdfs.LineBreakAccessor</accessor>
             <resolver>org.greenplum.pxf.plugins.hdfs.StringPassResolver</resolver>
         </plugins>
     </profile>
@@ -976,6 +1053,17 @@ under the License.
         <plugins>
             <fragmenter>org.greenplum.pxf.diagnostic.FilterVerifyFragmenter</fragmenter>
             <accessor>org.greenplum.pxf.diagnostic.UserDataVerifyAccessor</accessor>
+            <resolver>org.greenplum.pxf.plugins.hdfs.StringPassResolver</resolver>
+        </plugins>
+    </profile>
+    <profile>
+        <name>system:sample</name>
+        <description>
+            The system:sample produces a set of sample data for each segment with configurable number of rows.
+        </description>
+        <plugins>
+            <fragmenter>org.greenplum.pxf.diagnostic.EachSegmentDataFragmenter</fragmenter>
+            <accessor>org.greenplum.pxf.diagnostic.SampleDataAccessor</accessor>
             <resolver>org.greenplum.pxf.plugins.hdfs.StringPassResolver</resolver>
         </plugins>
     </profile>

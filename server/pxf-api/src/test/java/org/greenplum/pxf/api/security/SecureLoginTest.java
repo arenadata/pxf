@@ -4,10 +4,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.LoginSession;
 import org.apache.hadoop.security.PxfUserGroupInformation;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -61,7 +58,8 @@ public class SecureLoginTest {
 
     static {
         try {
-            hostname = InetAddress.getLocalHost().getCanonicalHostName();
+            // lowercase is used as SecurityUtil used for SecureLogin in hadoop-common also does lowercase conversion
+            hostname = InetAddress.getLocalHost().getCanonicalHostName().toLowerCase();
             RESOLVED_PRINCIPAL = String.format("principal/%s@REALM", hostname);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -136,7 +134,7 @@ public class SecureLoginTest {
 
     @Test
     public void testLoginNoKerberosWithServiceUser() throws IOException {
-        expectedLoginSession = new LoginSession("config", null, null, null, null, 0);
+        expectedLoginSession = new LoginSession("config", null, null, null, null, 0, 0);
         configuration.set("pxf.service.user.name", "foo");
 
         UserGroupInformation loginUGI = secureLogin.getLoginUser("server", "config", configuration);
@@ -174,7 +172,7 @@ public class SecureLoginTest {
     @Test
     public void testLoginKerberosFirstTime() throws IOException {
         expectedUGI = UserGroupInformation.createUserForTesting("some", new String[]{});
-        expectedLoginSession = new LoginSession("config", "principal", "/path/to/keytab", expectedUGI, null, 0);
+        expectedLoginSession = new LoginSession("config", "principal", "/path/to/keytab", expectedUGI, null, 0, 0.8f);
         configuration.set("hadoop.security.authentication", "kerberos");
         configuration.set(PROPERTY_KEY_SERVICE_PRINCIPAL, "principal");
         configuration.set(PROPERTY_KEY_SERVICE_KEYTAB, "/path/to/keytab");
@@ -198,13 +196,14 @@ public class SecureLoginTest {
     @Test
     public void testLoginKerberosSameSession() throws IOException {
         expectedUGI = UserGroupInformation.createUserForTesting("some", new String[]{});
-        expectedLoginSession = new LoginSession("config", "principal", "/path/to/keytab", expectedUGI, null, 90000);
+        expectedLoginSession = new LoginSession("config", "principal", "/path/to/keytab", expectedUGI, null, 90000, 0.8f);
         configuration.set("hadoop.security.authentication", "kerberos");
         configuration.set(PROPERTY_KEY_SERVICE_PRINCIPAL, "principal");
         configuration.set(PROPERTY_KEY_SERVICE_KEYTAB, "/path/to/keytab");
         configuration.set("hadoop.kerberos.min.seconds.before.relogin", "90");
         when(pxfUserGroupInformationMock.loginUserFromKeytab(configuration, "server", "config", "principal", "/path/to/keytab")).thenReturn(expectedLoginSession);
         when(pxfUserGroupInformationMock.getKerberosMinMillisBeforeRelogin("server", configuration)).thenReturn(90000L);
+        when(pxfUserGroupInformationMock.getKerberosTicketRenewWindow("server", configuration)).thenReturn(0.8f);
 
         UserGroupInformation loginUGI = secureLogin.getLoginUser("server", "config", configuration);
 
@@ -226,6 +225,7 @@ public class SecureLoginTest {
 
         verify(pxfUserGroupInformationMock).loginUserFromKeytab(configuration, "server", "config", "principal", "/path/to/keytab");
         verify(pxfUserGroupInformationMock).getKerberosMinMillisBeforeRelogin("server", configuration);
+        verify(pxfUserGroupInformationMock).getKerberosTicketRenewWindow("server", configuration);
         // 1 extra relogin call
         verify(pxfUserGroupInformationMock, times(2)).reloginFromKeytab("server", expectedLoginSession);
 
@@ -236,7 +236,7 @@ public class SecureLoginTest {
     public void testLoginKerberosDifferentServer() throws IOException {
         expectedUGI = UserGroupInformation.createUserForTesting("some", new String[]{});
 
-        expectedLoginSession = new LoginSession("config", "principal", "/path/to/keytab", expectedUGI, null, 0);
+        expectedLoginSession = new LoginSession("config", "principal", "/path/to/keytab", expectedUGI, null, 0, 0.8f);
 
         configuration.set("hadoop.security.authentication", "kerberos");
         configuration.set(PROPERTY_KEY_SERVICE_PRINCIPAL, "principal");
@@ -254,7 +254,7 @@ public class SecureLoginTest {
 
         // ------------------- now login for another server -------------------------
 
-        LoginSession expectedDiffLoginSession = new LoginSession("diff-config", "principal", "/path/to/keytab", expectedUGI, null, 0);
+        LoginSession expectedDiffLoginSession = new LoginSession("diff-config", "principal", "/path/to/keytab", expectedUGI, null, 0, 0.8f);
         Configuration diffConfiguration = new Configuration();
         diffConfiguration.set("hadoop.security.authentication", "kerberos");
         diffConfiguration.set(PROPERTY_KEY_SERVICE_PRINCIPAL, "principal");
@@ -283,13 +283,14 @@ public class SecureLoginTest {
     public void testLoginKerberosSameServerDifferentPrincipal() throws IOException {
         expectedUGI = UserGroupInformation.createUserForTesting("some", new String[]{});
 
-        expectedLoginSession = new LoginSession("config", "principal", "/path/to/keytab", expectedUGI, null, 0);
+        expectedLoginSession = new LoginSession("config", "principal", "/path/to/keytab", expectedUGI, null, 0, 0.8f);
 
         configuration.set("hadoop.security.authentication", "kerberos");
         configuration.set(PROPERTY_KEY_SERVICE_PRINCIPAL, "principal");
         configuration.set(PROPERTY_KEY_SERVICE_KEYTAB, "/path/to/keytab");
         configuration.set("hadoop.kerberos.min.seconds.before.relogin", "90");
         when(pxfUserGroupInformationMock.loginUserFromKeytab(configuration, "server", "config", "principal", "/path/to/keytab")).thenReturn(expectedLoginSession);
+        when(pxfUserGroupInformationMock.getKerberosTicketRenewWindow("server", configuration)).thenReturn(0.8f);
 
         UserGroupInformation loginUGI = secureLogin.getLoginUser("server", "config", configuration);
 
@@ -301,7 +302,7 @@ public class SecureLoginTest {
 
         // ------------------- now change the principal in the configuration, login again -------------------------
 
-        LoginSession expectedDiffLoginSession = new LoginSession("config", "diff-principal", "/path/to/keytab", expectedUGI, null, 90000);
+        LoginSession expectedDiffLoginSession = new LoginSession("config", "diff-principal", "/path/to/keytab", expectedUGI, null, 90000, 0.8f);
         Configuration diffConfiguration = new Configuration();
         diffConfiguration.set("hadoop.security.authentication", "kerberos");
         diffConfiguration.set(PROPERTY_KEY_SERVICE_PRINCIPAL, "diff-principal");
@@ -310,6 +311,7 @@ public class SecureLoginTest {
         when(pxfUserGroupInformationMock.loginUserFromKeytab(configuration, "server", "config", "principal", "/path/to/keytab")).thenReturn(expectedLoginSession);
         when(pxfUserGroupInformationMock.loginUserFromKeytab(diffConfiguration, "server", "config", "diff-principal", "/path/to/keytab")).thenReturn(expectedDiffLoginSession);
         when(pxfUserGroupInformationMock.getKerberosMinMillisBeforeRelogin("server", diffConfiguration)).thenReturn(180000L);
+        when(pxfUserGroupInformationMock.getKerberosTicketRenewWindow("server", diffConfiguration)).thenReturn(0.8f);
 
         UserGroupInformation diffLoginUGI = secureLogin.getLoginUser("server", "config", diffConfiguration);
 
@@ -325,6 +327,7 @@ public class SecureLoginTest {
 
         verify(pxfUserGroupInformationMock).loginUserFromKeytab(diffConfiguration, "server", "config", "diff-principal", "/path/to/keytab");
         verify(pxfUserGroupInformationMock, times(2)).getKerberosMinMillisBeforeRelogin("server", diffConfiguration);
+        verify(pxfUserGroupInformationMock, times(2)).getKerberosTicketRenewWindow("server", diffConfiguration);
         verify(pxfUserGroupInformationMock).reloginFromKeytab("server", expectedDiffLoginSession);
 
         verifyNoMoreInteractions(pxfUserGroupInformationMock);
@@ -333,10 +336,11 @@ public class SecureLoginTest {
     @Test
     public void testLoginKerberosReuseExistingLoginSessionWithResolvedHostnameInPrincipal() throws IOException {
         when(pxfUserGroupInformationMock.getKerberosMinMillisBeforeRelogin("server", configuration)).thenReturn(90L);
+        when(pxfUserGroupInformationMock.getKerberosTicketRenewWindow("server", configuration)).thenReturn(0.8f);
 
         expectedUGI = UserGroupInformation.createUserForTesting("some", new String[]{});
 
-        expectedLoginSession = new LoginSession("config", RESOLVED_PRINCIPAL, "/path/to/keytab", expectedUGI, null, 90);
+        expectedLoginSession = new LoginSession("config", RESOLVED_PRINCIPAL, "/path/to/keytab", expectedUGI, null, 90, 0.8f);
         SecureLogin.addToCache("server", expectedLoginSession);
 
         configuration.set("hadoop.security.authentication", "kerberos");

@@ -19,13 +19,16 @@ package org.greenplum.pxf.plugins.jdbc;
  * under the License.
  */
 
+import org.greenplum.pxf.api.GreenplumDateTime;
+import io.arenadata.security.encryption.client.service.DecryptClient;
 import org.greenplum.pxf.api.OneField;
 import org.greenplum.pxf.api.OneRow;
 import org.greenplum.pxf.api.io.DataType;
 import org.greenplum.pxf.api.model.Resolver;
+import org.greenplum.pxf.api.security.SecureLogin;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.greenplum.pxf.plugins.jdbc.utils.ConnectionManager;
+import org.greenplum.pxf.plugins.jdbc.utils.DbProduct;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -47,6 +50,7 @@ import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_TIME;
@@ -55,46 +59,68 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_TIME;
  * JDBC tables resolver
  */
 public class JdbcResolver extends JdbcBasePlugin implements Resolver {
-
-    private static final Logger LOG = LoggerFactory.getLogger(JdbcResolver.class);
-
+    // Signifies the ERA format
+    final private static String DATE_TIME_FORMATTER_SPECIFIER = " G";
+    /**
+     * LOCAL_DATE_GET_FORMATTER is used to format LocalDate to String.
+     * Examples: 2023-01-10 -> "2023-01-10 AD"; +12345-02-01 -> "12345-02-01 AD"; -0009-12-11 -> "0010-12-11 BC"
+     */
     private static final DateTimeFormatter LOCAL_DATE_GET_FORMATTER = (new DateTimeFormatterBuilder())
             .appendValue(ChronoField.YEAR_OF_ERA, 4, 9, SignStyle.NORMAL).appendLiteral("-")
             .appendValue(ChronoField.MONTH_OF_YEAR, 2).appendLiteral('-')
             .appendValue(ChronoField.DAY_OF_MONTH, 2)
-            .appendPattern(" G")
+            .appendPattern(DATE_TIME_FORMATTER_SPECIFIER)
             .toFormatter();
 
+    /**
+     * LOCAL_DATE_TIME_GET_FORMATTER is used to format LocalDateTime to String.
+     * Examples: 2018-10-19T10:11 -> "2018-10-19 10:11:00 AD"; +123456-10-19T11:12:13 -> "123456-10-19 11:12:13 AD";
+     * -1233-10-19T10:11:15.456 -> "1234-10-19 10:11:15.456 BC"
+     */
     private static final DateTimeFormatter LOCAL_DATE_TIME_GET_FORMATTER = (new DateTimeFormatterBuilder())
             .appendValue(ChronoField.YEAR_OF_ERA, 4, 9, SignStyle.NORMAL).appendLiteral("-")
             .appendValue(ChronoField.MONTH_OF_YEAR, 2).appendLiteral('-')
             .appendValue(ChronoField.DAY_OF_MONTH, 2).appendLiteral(" ")
             .append(ISO_LOCAL_TIME)
-            .appendPattern(" G")
+            .appendPattern(DATE_TIME_FORMATTER_SPECIFIER)
             .toFormatter();
 
+
+    /**
+     * OFFSET_DATE_TIME_GET_FORMATTER is used to format OffsetDateTime to String.
+     * Examples: 1956-02-01T07:15:16Z -> "1956-02-01 07:15:16Z AD"; +12345-02-01T10:15:16Z -> "12345-02-01 10:15:16Z AD";
+     * -1999-02-01T04:15:16Z -> "2000-02-01 04:15:16Z BC"
+     */
     private static final DateTimeFormatter OFFSET_DATE_TIME_GET_FORMATTER = (new DateTimeFormatterBuilder())
             .appendValue(ChronoField.YEAR_OF_ERA, 4, 9, SignStyle.NORMAL).appendLiteral("-")
             .appendValue(ChronoField.MONTH_OF_YEAR, 2).appendLiteral('-')
             .appendValue(ChronoField.DAY_OF_MONTH, 2).appendLiteral(" ")
             .append(ISO_OFFSET_TIME)
-            .appendPattern(" G")
+            .appendPattern(DATE_TIME_FORMATTER_SPECIFIER)
             .toFormatter();
 
+    /**
+     * LOCAL_DATE_SET_FORMATTER is used to format String to LocalDate.
+     * Examples: "1977-12-11" -> 1977-12-11; "456789-12-11" -> +456789-12-11; "0010-12-11 BC" -> -0009-12-11
+     */
     private static final DateTimeFormatter LOCAL_DATE_SET_FORMATTER = (new DateTimeFormatterBuilder())
             .appendValue(ChronoField.YEAR_OF_ERA, 1, 9, SignStyle.NORMAL).appendLiteral('-')
             .appendValue(ChronoField.MONTH_OF_YEAR, 2).appendLiteral('-')
             .appendValue(ChronoField.DAY_OF_MONTH, 2)
-            .optionalStart().appendPattern(" G").optionalEnd()
+            .optionalStart().appendPattern(DATE_TIME_FORMATTER_SPECIFIER).optionalEnd()
             .toFormatter();
 
+    /**
+     * LOCAL_DATE_TIME_SET_FORMATTER is used to transfer String to LocalDateTime.
+     * Examples: "1980-08-10 17:10:20" -> 1980-08-10T17:10:20; "123456-10-19 11:12:13" -> +123456-10-19T11:12:13;
+     * "1234-10-19 10:11:15.456 BC" -> -1233-10-19T10:11:15.456
+     */
     private static final DateTimeFormatter LOCAL_DATE_TIME_SET_FORMATTER = (new DateTimeFormatterBuilder())
             .appendValue(ChronoField.YEAR_OF_ERA, 1, 9, SignStyle.NORMAL).appendLiteral('-')
             .appendValue(ChronoField.MONTH_OF_YEAR, 1, 2, SignStyle.NORMAL).appendLiteral('-')
-            .appendValue(ChronoField.DAY_OF_MONTH, 1, 2, SignStyle.NORMAL)
-            .appendLiteral(" ")
+            .appendValue(ChronoField.DAY_OF_MONTH, 1, 2, SignStyle.NORMAL).appendLiteral(" ")
             .append(ISO_LOCAL_TIME)
-            .optionalStart().appendPattern(" G").optionalEnd()
+            .optionalStart().appendPattern(DATE_TIME_FORMATTER_SPECIFIER).optionalEnd()
             .toFormatter();
 
     private static final Set<DataType> DATATYPES_SUPPORTED = EnumSet.of(
@@ -110,8 +136,27 @@ public class JdbcResolver extends JdbcBasePlugin implements Resolver {
             DataType.SMALLINT,
             DataType.NUMERIC,
             DataType.TIMESTAMP,
-            DataType.DATE
+            DataType.DATE,
+            DataType.JSON,
+            DataType.JSONB
     );
+
+    /**
+     * Creates a new instance of the JdbcResolver
+     */
+    public JdbcResolver() {
+        super();
+    }
+
+    /**
+     * Creates a new instance of the resolver with provided connection manager.
+     *
+     * @param connectionManager connection manager
+     * @param secureLogin       the instance of the secure login
+     */
+    JdbcResolver(ConnectionManager connectionManager, SecureLogin secureLogin, DecryptClient decryptClient) {
+        super(connectionManager, secureLogin, decryptClient);
+    }
 
     /**
      * getFields() implementation
@@ -164,6 +209,8 @@ public class JdbcResolver extends JdbcBasePlugin implements Resolver {
                 case BPCHAR:
                 case TEXT:
                 case NUMERIC:
+                case JSONB:
+                case JSON:
                     value = result.getString(colName);
                     break;
                 case DATE:
@@ -171,7 +218,8 @@ public class JdbcResolver extends JdbcBasePlugin implements Resolver {
                         LocalDate localDate = result.getObject(colName, LocalDate.class);
                         value = localDate != null ? localDate.format(LOCAL_DATE_GET_FORMATTER) : null;
                     } else {
-                        value = result.getDate(colName);
+                        Date date = result.getDate(colName);
+                        value = date != null ? date.toLocalDate().format(GreenplumDateTime.DATE_FORMATTER) : null;
                     }
                     break;
                 case TIMESTAMP:
@@ -179,7 +227,8 @@ public class JdbcResolver extends JdbcBasePlugin implements Resolver {
                         LocalDateTime localDateTime = result.getObject(colName, LocalDateTime.class);
                         value = localDateTime != null ? localDateTime.format(LOCAL_DATE_TIME_GET_FORMATTER) : null;
                     } else {
-                        value = result.getTimestamp(colName);
+                        Timestamp timestamp = result.getTimestamp(colName);
+                        value = timestamp != null ? timestamp.toLocalDateTime().format(GreenplumDateTime.DATETIME_FORMATTER) : null;
                     }
                     break;
                 case TIMESTAMP_WITH_TIME_ZONE:
@@ -192,6 +241,9 @@ public class JdbcResolver extends JdbcBasePlugin implements Resolver {
                                         DataType.get(oneField.type),
                                         column));
                     }
+                    break;
+                case UUID:
+                    value = result.getObject(colName, java.util.UUID.class);
                     break;
                 default:
                     throw new UnsupportedOperationException(
@@ -232,19 +284,6 @@ public class JdbcResolver extends JdbcBasePlugin implements Resolver {
                                 oneFieldType, column));
             }
 
-            if (LOG.isDebugEnabled()) {
-                String valDebug;
-                if (oneField.val == null) {
-                    valDebug = "null";
-                } else if (oneFieldType == DataType.BYTEA) {
-                    valDebug = String.format("'{}'", new String((byte[]) oneField.val));
-                } else {
-                    valDebug = String.format("'{}'", oneField.val.toString());
-                }
-
-                LOG.debug("Column {} OneField: type {}, content {}", columnIndex, oneFieldType, valDebug);
-            }
-
             // Convert TEXT columns into native data types
             if ((oneFieldType == DataType.TEXT) && (columnType != DataType.TEXT)) {
                 oneField.type = columnType.getOID();
@@ -259,6 +298,8 @@ public class JdbcResolver extends JdbcBasePlugin implements Resolver {
                     case BPCHAR:
                     case TEXT:
                     case BYTEA:
+                    case JSON:
+                    case JSONB:
                         break;
                     case BOOLEAN:
                         oneField.val = Boolean.parseBoolean(rawVal);
@@ -295,6 +336,9 @@ public class JdbcResolver extends JdbcBasePlugin implements Resolver {
                             oneField.val = Date.valueOf(rawVal);
                         }
                         break;
+                    case UUID:
+                        oneField.val = UUID.fromString(rawVal);
+                        break;
                     default:
                         throw new UnsupportedOperationException(
                                 String.format("Field type '%s' (column '%s') is not supported",
@@ -315,7 +359,7 @@ public class JdbcResolver extends JdbcBasePlugin implements Resolver {
      * @throws SQLException if the given statement is broken
      */
     @SuppressWarnings("unchecked")
-    public static void decodeOneRowToPreparedStatement(OneRow row, PreparedStatement statement) throws IOException, SQLException {
+    public static void decodeOneRowToPreparedStatement(OneRow row, PreparedStatement statement, DbProduct dbProduct) throws IOException, SQLException {
         // This is safe: OneRow comes from JdbcResolver
         List<OneField> tuple = (List<OneField>) row.getData();
         for (int i = 1; i <= tuple.size(); i++) {
@@ -391,7 +435,7 @@ public class JdbcResolver extends JdbcBasePlugin implements Resolver {
                         statement.setNull(i, Types.TIMESTAMP);
                     } else {
                         if (field.val instanceof LocalDateTime) {
-                            statement.setObject(i, (LocalDateTime) field.val);
+                            statement.setObject(i, field.val);
                         } else {
                             statement.setTimestamp(i, (Timestamp) field.val);
                         }
@@ -402,10 +446,21 @@ public class JdbcResolver extends JdbcBasePlugin implements Resolver {
                         statement.setNull(i, Types.DATE);
                     } else {
                         if (field.val instanceof LocalDate) {
-                            statement.setObject(i, (LocalDate) field.val);
+                            statement.setObject(i, field.val);
                         } else {
                             statement.setDate(i, (Date) field.val);
                         }
+                    }
+                    break;
+                case UUID:
+                    statement.setObject(i, field.val);
+                    break;
+                case JSON:
+                case JSONB:
+                    if (dbProduct == DbProduct.POSTGRES) {
+                        statement.setObject(i, field.val, Types.OTHER);
+                    } else {
+                        statement.setObject(i, field.val);
                     }
                     break;
                 default:
@@ -414,7 +469,13 @@ public class JdbcResolver extends JdbcBasePlugin implements Resolver {
         }
     }
 
-    private Object getLocalDate(String rawVal) {
+    /**
+     * Convert a string to LocalDate class with formatter
+     *
+     * @param rawVal the LocalDate in a string format
+     * @return LocalDate
+     */
+    private LocalDate getLocalDate(String rawVal) {
         try {
             return LocalDate.parse(rawVal, LOCAL_DATE_SET_FORMATTER);
         } catch (Exception e) {
@@ -422,7 +483,13 @@ public class JdbcResolver extends JdbcBasePlugin implements Resolver {
         }
     }
 
-    private Object getLocalDateTime(String rawVal) {
+    /**
+     * Convert a string to LocalDateTime class with formatter
+     *
+     * @param rawVal the LocalDateTime in a string format
+     * @return LocalDateTime
+     */
+    private LocalDateTime getLocalDateTime(String rawVal) {
         try {
             return LocalDateTime.parse(rawVal, LOCAL_DATE_TIME_SET_FORMATTER);
         } catch (Exception e) {

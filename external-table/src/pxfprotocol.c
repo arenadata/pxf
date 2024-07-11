@@ -20,8 +20,11 @@
 
 #include "pxfbridge.h"
 #include "pxffilters.h"
-
+#if PG_VERSION_NUM >= 120000
+#include "extension/gp_exttable_fdw/extaccess.h"
+#else
 #include "access/fileam.h"
+#endif
 #include "utils/elog.h"
 
 /* define magic module unless run as a part of test cases */
@@ -187,6 +190,7 @@ create_context(PG_FUNCTION_ARGS, bool is_import)
 	context->proj_info = proj_info;
 	context->quals     = filter_quals;
 	context->completed = false;
+	context->cancel    = NULL;
 	return context;
 }
 

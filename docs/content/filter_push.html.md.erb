@@ -37,7 +37,7 @@ PXF filter pushdown can be used with these data types (connector- and profile-sp
 - `INT2`, `INT4`, `INT8`
 - `CHAR`, `TEXT`, `VARCHAR`
 - `FLOAT`
-- `NUMERIC` (not available with the S3 connector when using S3 Select, nor with the `hive` profile when accessing `STORED AS Parquet`)
+- `NUMERIC` (not available with the `hive` profile when accessing `STORED AS Parquet`)
 - `BOOL`
 - `DATE`, `TIMESTAMP` (available only with the JDBC connector, the S3 connector when using S3 Select, the `hive:rc` and `hive:orc` profiles, and the `hive` profile when accessing `STORED AS` `RCFile` or `ORC`)
 
@@ -62,7 +62,7 @@ The following PXF profiles support some aspects of filter pushdown as well as di
 </br><sup>3</sup>&nbsp;PXF filtering is based on file-level, stripe-level, and row-level ORC statistics.
 </br><sup>4</sup>&nbsp;The PXF `jdbc` profile supports the `LIKE` operator only for `TEXT` fields.
 
-PXF does not support filter pushdown for any profile not mentioned in the table above, including: *:avro, *:AvroSequenceFile, *:SequenceFile, *:json, *:text, *:csv, and *:text:multi.
+PXF does not support filter pushdown for any profile not mentioned in the table above, including: *:avro, *:AvroSequenceFile, *:SequenceFile, *:json, *:text, *:csv, `*:fixedwidth`, and *:text:multi.
 
 To summarize, all of the following criteria must be met for filter pushdown to occur:
 

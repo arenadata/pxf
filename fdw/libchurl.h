@@ -105,6 +105,12 @@ void		churl_headers_cleanup(CHURL_HEADERS headers);
  * returns a handle to churl transfer
  */
 CHURL_HANDLE churl_init_upload(const char *url, CHURL_HEADERS headers);
+CHURL_HANDLE churl_init_upload_timeout(const char *url, CHURL_HEADERS headers, long timeout);
+
+/*
+ * Returns local port of connected handle or 0
+ */
+int			churl_get_local_port(CHURL_HANDLE handle);
 
 /*
  * Start a download to url
@@ -137,11 +143,6 @@ void		churl_read_check_connectivity(CHURL_HANDLE handle);
  * Cleanup churl resources
  */
 void		churl_cleanup(CHURL_HANDLE handle, bool after_error);
-
-/*
- * Debug function - print the http headers
- */
-void		print_http_headers(CHURL_HEADERS headers);
 
 #define LOCAL_HOST_RESOLVE_STRING_FORMAT "localhost:%d:127.0.0.1"
 /* PORT can be at most five digits giving a total length for the resolve string

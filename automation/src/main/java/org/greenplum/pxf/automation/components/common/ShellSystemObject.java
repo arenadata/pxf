@@ -50,7 +50,7 @@ public class ShellSystemObject extends BaseSystemObject {
     public static final int EXIT_CODE_NOT_EXISTS = -1;
 
     // the max timeout for command execution
-    private long commandTimeout = _10_SECONDS;
+    private long commandTimeout = _30_SECONDS;
 
     private String[] requiredEnvParams = new String[] {
             "JAVA_HOME",
@@ -60,8 +60,7 @@ public class ShellSystemObject extends BaseSystemObject {
             "MASTER_DATA_DIRECTORY",
             "PGPORT",
             "PGHOST",
-            "PGDATABASE",
-            "TERM"
+            "PGDATABASE"
     };
 
     public ShellSystemObject() {

@@ -251,7 +251,7 @@ function doReset() {
     echoYellow '*****************************************************************************'
 }
 
-function installExternalTableExtension() {
+function installExtensions() {
     if [[ -d ${parent_script_dir}/gpextable ]]; then
         if [[ -z "${GPHOME}" ]]; then
             echoYellow 'WARNING: environment variable GPHOME is not set, skipping install of Greenplum External Table PXF Extension'
@@ -261,10 +261,10 @@ function installExternalTableExtension() {
             echoGreen "Installing Greenplum External Table PXF Extension into '${GPHOME}'"
 
             local target_control_file="${GPHOME}/share/postgresql/extension/pxf.control"
-            cp -Lv "${parent_script_dir}/gpextable/pxf.control" "${target_control_file}"
-            chmod 644 "${target_control_file}"
+            install --verbose --mode=0644 "${parent_script_dir}/gpextable/pxf.control" "${target_control_file}" || fail "cannot install pxf.control to '${target_control_file}'"
         fi
-    elif [[ -d ${parent_script_dir}/fdw ]]; then
+    fi
+    if [[ -d ${parent_script_dir}/fdw ]]; then
         if [[ -z "${GPHOME}" ]]; then
             echoYellow 'WARNING: environment variable GPHOME is not set, skipping install of Greenplum Foreign Data Wrapper PXF Extension'
         elif [[ ! -f ${GPHOME}/greenplum_path.sh ]]; then
@@ -273,8 +273,7 @@ function installExternalTableExtension() {
             echoGreen "Installing Greenplum Foreign Data Wrapper PXF Extension into '${GPHOME}'"
 
             local target_control_file="${GPHOME}/share/postgresql/extension/pxf_fdw.control"
-            cp -Lv "${parent_script_dir}/fdw/pxf_fdw.control" "${target_control_file}"
-            chmod 644 "${target_control_file}"
+            install --verbose --mode=0644 "${parent_script_dir}/fdw/pxf_fdw.control" "${target_control_file}" || fail "cannot install pxf_fdw.control to '${target_control_file}'"
         fi
     fi
 }
@@ -290,7 +289,7 @@ function doInit() {
     echoYellow '*'
     echoYellow '*****************************************************************************'
     checkJavaHome
-    installExternalTableExtension || return 1
+    installExtensions || return 1
 }
 
 # doPrepare prepares PXF_BASE outside of PXF_HOME
@@ -532,7 +531,7 @@ case $pxf_script_command in
         doInit
         ;;
     'register')
-        installExternalTableExtension
+        installExtensions
         ;;
     'start')
         doStart

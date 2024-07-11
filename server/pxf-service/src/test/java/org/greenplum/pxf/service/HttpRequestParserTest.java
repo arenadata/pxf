@@ -97,6 +97,7 @@ public class HttpRequestParserTest {
         parameters.add("X-GP-DATABASE-ENCODING", "UTF8");
         parameters.add("X-GP-SCHEMA-NAME", "public");
         parameters.add("X-GP-TABLE-NAME", "foobar");
+        parameters.add("X-GP-CLIENT-PORT", "666");
 
         parser = new HttpRequestParser(mockPluginConf, new CharsetUtils(), new HttpHeaderDecoder(), mockBuildProperties, mockApiVersionChecker);
 
@@ -304,6 +305,17 @@ public class HttpRequestParserTest {
 
     @Test
     public void statsParams() {
+        parameters.add("X-GP-OPTIONS-STATS_MAX_FRAGMENTS", "10101");
+        parameters.add("X-GP-OPTIONS-STATS_SAMPLE_RATIO", "0.039");
+
+        RequestContext context = parser.parseRequest(parameters, RequestType.READ_BRIDGE);
+
+        assertEquals(10101, context.getStatsMaxFragments());
+        assertEquals(0.039, context.getStatsSampleRatio(), 0.01);
+    }
+
+    @Test
+    public void statsParamsDeprecated() {
         parameters.add("X-GP-OPTIONS-STATS-MAX-FRAGMENTS", "10101");
         parameters.add("X-GP-OPTIONS-STATS-SAMPLE-RATIO", "0.039");
 
@@ -315,7 +327,7 @@ public class HttpRequestParserTest {
 
     @Test
     public void testInvalidStatsSampleRatioValue() {
-        parameters.add("X-GP-OPTIONS-STATS-SAMPLE-RATIO", "a");
+        parameters.add("X-GP-OPTIONS-STATS_SAMPLE_RATIO", "a");
         Exception e = assertThrows(IllegalArgumentException.class,
                 () -> parser.parseRequest(parameters, RequestType.READ_BRIDGE));
         assertEquals("For input string: \"a\"", e.getMessage());
@@ -323,6 +335,22 @@ public class HttpRequestParserTest {
 
     @Test
     public void testInvalidStatsMaxFragmentsValue() {
+        parameters.add("X-GP-OPTIONS-STATS_MAX_FRAGMENTS", "10.101");
+        Exception e = assertThrows(IllegalArgumentException.class,
+                () -> parser.parseRequest(parameters, RequestType.READ_BRIDGE));
+        assertEquals("For input string: \"10.101\"", e.getMessage());
+    }
+
+    @Test
+    public void testInvalidStatsSampleRatioValueDeprecated() {
+        parameters.add("X-GP-OPTIONS-STATS-SAMPLE-RATIO", "a");
+        Exception e = assertThrows(IllegalArgumentException.class,
+                () -> parser.parseRequest(parameters, RequestType.READ_BRIDGE));
+        assertEquals("For input string: \"a\"", e.getMessage());
+    }
+
+    @Test
+    public void testInvalidStatsMaxFragmentsValueDeprecated() {
         parameters.add("X-GP-OPTIONS-STATS-MAX-FRAGMENTS", "10.101");
         Exception e = assertThrows(IllegalArgumentException.class,
                 () -> parser.parseRequest(parameters, RequestType.READ_BRIDGE));
@@ -439,7 +467,7 @@ public class HttpRequestParserTest {
     }
 
     @Test
-    public void whitelistedOptionsAreAddedAsProperties() {
+    public void allowlistOptionsAreAddedAsProperties() {
         parameters.set("X-GP-OPTIONS-PROFILE", "test-profile");
         parameters.set("X-GP-OPTIONS-CONFIGPROP1", "config-prop-value1");
         parameters.set("X-GP-OPTIONS-CONFIGPROP3", "config-prop-value3");

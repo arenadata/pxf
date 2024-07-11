@@ -16,7 +16,7 @@ import org.greenplum.pxf.automation.components.cluster.PhdCluster;
 import org.greenplum.pxf.automation.components.cluster.installer.nodes.Node;
 import org.greenplum.pxf.automation.components.gpdb.Gpdb;
 import org.greenplum.pxf.automation.components.hdfs.Hdfs;
-import org.greenplum.pxf.automation.components.tinc.Tinc;
+import org.greenplum.pxf.automation.components.regress.Regress;
 import org.greenplum.pxf.automation.structures.tables.pxf.ReadableExternalTable;
 import org.greenplum.pxf.automation.utils.system.ProtocolUtils;
 import org.testng.annotations.AfterClass;
@@ -39,7 +39,7 @@ import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_SECURITY
 public abstract class BaseTestParent {
     // Objects used in the tests
     protected PhdCluster cluster;
-    protected Tinc tinc;
+    protected Regress regress;
     protected Gpdb gpdb;
     protected Gpdb nonUtf8Gpdb;
     protected Hdfs hdfs;
@@ -74,29 +74,25 @@ public abstract class BaseTestParent {
 
         try {
 
-            cluster = (PhdCluster) systemManager.getSystemObject("cluster");
+            cluster = (PhdCluster) systemManager.getSystemObjectByXPath("/sut/cluster");
 
             // Initialize HDFS system object
-            hdfs = (Hdfs) systemManager.getSystemObject(ProtocolUtils.getProtocol().value());
+            hdfs = (Hdfs) systemManager.getSystemObjectByXPath("/sut/hdfs");
 
             String testPrincipal = cluster.getTestKerberosPrincipal();
             trySecureLogin(hdfs, testPrincipal);
 
-            // Initialize non-secure HDFS system object (optional system object)
-            hdfsNonSecure = (Hdfs) systemManager.
-                    getSystemObject("/sut", "hdfsNonSecure", -1, (SystemObject) null, false, (String) null, SutFactory.getInstance().getSutInstance());
-
             // Create local Data folder
             File localDataTempFolder = new File(dataTempFolder);
             localDataTempFolder.mkdirs();
-            // Initialize Tinc System Object
-            tinc = (Tinc) systemManager.getSystemObject("tinc");
+            // Initialize Regress System Object
+            regress = (Regress) systemManager.getSystemObjectByXPath("/sut/regress");
             // Initialize GPDB System Object
-            gpdb = (Gpdb) systemManager.getSystemObject("gpdb");
+            gpdb = (Gpdb) systemManager.getSystemObjectByXPath("/sut/gpdb");
             // Initialize GPDB2 System Object -- database with non-utf8 encoding
-            nonUtf8Gpdb = (Gpdb) systemManager.getSystemObject("gpdb2");
+            nonUtf8Gpdb = (Gpdb) systemManager.getSystemObjectByXPath("/sut/gpdb2");
 
-            // Check if userName data base exists if not create it (TINC requirement)
+            // Check if userName data base exists if not create it (pxf_regress requirement)
             String userName = System.getProperty("user.name");
             if (!gpdb.checkDataBaseExists(userName)) {
                 gpdb.createDataBase(userName, false);
@@ -217,16 +213,16 @@ public abstract class BaseTestParent {
     }
 
     /**
-     * Run given tinc Tests
+     * Run given SQL Tests
      *
-     * @param tincTest
+     * @param sqlTestPath
      * @throws Exception in case of test fails
      */
-    protected void runTincTest(String tincTest) throws Exception {
+    protected void runSqlTest(String sqlTestPath) throws Exception {
         try {
-            tinc.runTest(tincTest);
+            regress.runSqlTest(sqlTestPath);
         } catch (Exception e) {
-            throw new Exception("Tinc Failure (" + e.getMessage() + ")");
+            throw new Exception(String.format("Regress Failure (%s)", e.getMessage()));
         }
     }
 

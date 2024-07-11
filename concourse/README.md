@@ -75,6 +75,16 @@ By default, these pipelines run perf on RHEL7.
 If you would like to run pipelines using RHEL8, please include `REDHAT_MAJOR_VERSION=8` to the command.
 Ex: `make SCALE=10 REDHAT_MAJOR_VERSION=8 -C "${HOME}/workspace/pxf/concourse" perf`
 
+# Deploy development PXF release pipelines
+
+The dev release pipeline performs most functions of the `pxf-build` release pipeline except for the tagging and bumping of the build version.
+
+To deploy dev release pipeline, use:
+
+```shell
+make -C "${HOME}/workspace/pxf/concourse" dev-release
+```
+
 # Deploy development PXF pipelines
 
 The dev pipeline is an abbreviated version of the `pxf-build` pipeline.
@@ -85,11 +95,14 @@ To deploy dev pipeline against gpdb 5X_STABLE and 6X_STABLE branches, use:
 make -C "${HOME}/workspace/pxf/concourse" dev
 ```
 
-To deploy multi-node dev pipeline, you can specify either the `MULTINODE` or
-`MULTINODE_NO_IMPERSONATION`, which will also run CLI tests:
+To deploy multi-node dev pipeline, you can specify the following options
+* `MULTINODE_EL7=<true|false>` for EL7
+* `MULTINODE_EL8=<true|false>` for EL8
+* `MULTINODE_EL9=<true|false>` for EL9
+* `MULTINODE_NO_IMPERSONATION=<true|false>` for EL7, which will also run CLI tests
 
 ```shell
-MULTINODE=true make -C "${HOME}/workspace/pxf/concourse" dev
+MULTINODE_EL7=true make -C "${HOME}/workspace/pxf/concourse" dev
 ```
 
 This command will automatically point the pipeline at your currently checked-out branch of PXF.
@@ -102,4 +115,29 @@ it needs to be cleaned manually and so do the dataproc clusters.
 
 ```shell
 YOUR_TAG=<YOUR_TAG> make -C "${HOME}/workspace/pxf/concourse" longevity
+```
+
+## Uploading a new Apache Maven 3 version
+
+The CI pipelines for PXF run automation tests using Apache Maven 3.x. Instead of downloading this directly from the Apache
+mirrors or Apache archive, we store a copy in Google Cloud Storage to use when we create our images in Cloudbuild.
+Typically, we will not be updating these values very often. However, if we need to upload a new version of Maven, you
+can use a snippet like this one to download and then upload to GCS.
+
+```bash
+./scripts/download-maven-from-apache-mirror.sh <MAVEN-VERSION>
+gcloud storage cp ../downloads/apache-maven-<MAVEN-VERSION>-bin.tar.gz gs://data-gpdb-ud-pxf-build-resources/apache-maven
+
+# Example for Apache Maven 3.9.2
+./scripts/download-spark-from-apache-mirror.sh 3.9.2
+gcloud storage cp ../downloads/apache-maven-3.9.2-bin.tar.gz gs://data-gpdb-ud-pxf-build-resources/apache-maven
+
+# Example for Apache Maven 3 Latest
+$ ./scripts/download-spark-from-apache-mirror.sh latest
+> Looking for latest maven-3 version...
+> Latest maven version determined to be: 3.9.3
+> Would you like to proceed (y/n)? y
+
+gcloud storage cp ../downloads/apache-maven-3.9.3-bin.tar.gz gs://data-gpdb-ud-pxf-build-resources/apache-maven
+
 ```

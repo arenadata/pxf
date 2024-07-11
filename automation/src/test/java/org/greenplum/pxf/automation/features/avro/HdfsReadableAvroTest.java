@@ -1,16 +1,13 @@
 package org.greenplum.pxf.automation.features.avro;
 
-import annotations.FailsWithFDW;
 import annotations.WorksWithFDW;
 import org.greenplum.pxf.automation.components.cluster.PhdCluster;
 import org.greenplum.pxf.automation.datapreparer.CustomAvroPreparer;
 import org.greenplum.pxf.automation.features.BaseFeature;
 import org.greenplum.pxf.automation.fileformats.IAvroSchema;
 import org.greenplum.pxf.automation.structures.tables.basic.Table;
-import org.greenplum.pxf.automation.structures.tables.pxf.ReadableExternalTable;
 import org.greenplum.pxf.automation.structures.tables.utils.TableFactory;
 import org.greenplum.pxf.automation.utils.fileformats.FileFormatsUtils;
-import org.greenplum.pxf.automation.utils.system.ProtocolEnum;
 import org.greenplum.pxf.automation.utils.system.ProtocolUtils;
 import org.testng.annotations.Test;
 
@@ -22,6 +19,7 @@ import java.io.File;
  * See <a href="https://testrail.greenplum.com/index.php?/suites/view/1099">HDFS
  * Readable - Avro</a>
  */
+@WorksWithFDW
 public class HdfsReadableAvroTest extends BaseFeature {
 
     private String hdfsPath;
@@ -148,12 +146,11 @@ public class HdfsReadableAvroTest extends BaseFeature {
      * @throws Exception
      */
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @WorksWithFDW
     public void avroSimple() throws Exception {
         prepareReadableTable("avrotest_simple", new String[]{"name text", "age int"}, hdfsPath + avroSimpleFileName + SUFFIX_AVRO);
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.simple.runTest");
+        runSqlTest("features/hdfs/readable/avro/simple");
     }
 
     /**
@@ -163,7 +160,6 @@ public class HdfsReadableAvroTest extends BaseFeature {
      * @throws Exception
      */
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @WorksWithFDW
     public void avroSupportedPrimitives() throws Exception {
         prepareReadableTable("avrotest_supported_primitive_types", new String[]{
                 "type_int      int",
@@ -175,7 +171,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
                 "type_boolean  bool"}, hdfsPath + avroTypesFileName + SUFFIX_AVRO);
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.supported_primitive_types.runTest");
+        runSqlTest("features/hdfs/readable/avro/supported_primitive_types");
     }
 
     /**
@@ -184,7 +180,6 @@ public class HdfsReadableAvroTest extends BaseFeature {
      * @throws Exception
      */
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @WorksWithFDW
     public void avroArrays() throws Exception {
         prepareReadableTable("avrotest_arrays", AVRO_ARRAYS_AS_TEXT_FIELDS, hdfsPath + avroArrayFileName + SUFFIX_AVRO);
         gpdb.createTableAndVerify(exTable);
@@ -193,7 +188,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
         gpdb.createTableAndVerify(exTable);
 
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.array_types.runTest");
+        runSqlTest("features/hdfs/readable/avro/array_types");
     }
 
     /**
@@ -202,38 +197,34 @@ public class HdfsReadableAvroTest extends BaseFeature {
      * @throws Exception
      */
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @WorksWithFDW
     public void avroComplex() throws Exception {
         prepareReadableTable("avrotest_complex", AVRO_ALL_TYPES_FIELDS, hdfsPath + avroComplexFileName + SUFFIX_AVRO);
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.complex_types.runTest");
+        runSqlTest("features/hdfs/readable/avro/complex_types");
     }
 
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @WorksWithFDW
     public void avroComplexTextFormat() throws Exception {
         prepareReadableTable("avrotest_complex_text", AVRO_ALL_TYPES_FIELDS, hdfsPath + avroComplexFileName + SUFFIX_AVRO);
         exTable.setFormatter(null);
         exTable.setFormat("TEXT");
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.complex_types_text.runTest");
+        runSqlTest("features/hdfs/readable/avro/complex_types_text");
     }
 
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @WorksWithFDW
     public void avroComplexCsvFormat() throws Exception {
         prepareReadableTable("avrotest_complex_csv", AVRO_ALL_TYPES_FIELDS, hdfsPath + avroComplexFileName + SUFFIX_AVRO);
         exTable.setFormatter(null);
         exTable.setFormat("CSV");
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.complex_types_csv.runTest");
+        runSqlTest("features/hdfs/readable/avro/complex_types_csv");
     }
 
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @WorksWithFDW
     public void avroLogicalTypes() throws Exception {
         prepareReadableTable("avro_logical_types", new String[]{
                 "uid                    uuid",
@@ -248,11 +239,10 @@ public class HdfsReadableAvroTest extends BaseFeature {
                 hdfsPath + avroLogicalTypeFileName + SUFFIX_AVRO);
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.logical_types.runTest");
+        runSqlTest("features/hdfs/readable/avro/logical_types");
     }
 
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @WorksWithFDW
     public void avroLogicalDecimalTypes() throws Exception {
         prepareReadableTable("avro_logical_decimal_types", new String[]{
               "decNum1   decimal",
@@ -264,11 +254,10 @@ public class HdfsReadableAvroTest extends BaseFeature {
             hdfsPath + avroLogicalDecimalTypeFileName + SUFFIX_AVRO);
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.logical_decimal_types.runTest");
+        runSqlTest("features/hdfs/readable/avro/logical_decimal_types");
     }
 
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @WorksWithFDW
     public void arrayOfLogicalTypes() throws Exception {
         prepareReadableTable("array_of_logical_types", new String[]{
             "type_uid                    uuid[]",
@@ -283,11 +272,10 @@ public class HdfsReadableAvroTest extends BaseFeature {
                 hdfsPath + arrayOfLogicalTypesFileName + SUFFIX_AVRO);
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.array_of_logical_types.runTest");
+        runSqlTest("features/hdfs/readable/avro/array_of_logical_types");
     }
 
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @FailsWithFDW
     public void logicalIncorrectSchemaTest() throws Exception {
         prepareReadableTable("logical_incorrect_schema_test", new String[]{
             "dob    date " },
@@ -297,7 +285,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
         exTable.setExternalDataSchema(schemaPath);
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.errors.logical_incorrect_schema_test.runTest");
+        runSqlTest("features/hdfs/readable/avro/errors/logical_incorrect_schema_test");
     }
 
     /**
@@ -306,7 +294,6 @@ public class HdfsReadableAvroTest extends BaseFeature {
      * @throws Exception
      */
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @WorksWithFDW
     public void avroComplexReadSchemaFromHcfs() throws Exception {
         hdfs.copyFromLocal(resourcePath + complexAvroFile, hdfsPath + "schema/" + complexAvroFile);
         prepareReadableTable("avrotest_complex", AVRO_ALL_TYPES_FIELDS, hdfsPath + avroComplexFileName + SUFFIX_AVRO);
@@ -314,7 +301,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
         exTable.setExternalDataSchema(schemaPath);
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.complex_types.runTest");
+        runSqlTest("features/hdfs/readable/avro/complex_types");
     }
 
     /**
@@ -323,14 +310,13 @@ public class HdfsReadableAvroTest extends BaseFeature {
      * @throws Exception
      */
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @WorksWithFDW
     public void avroComplexReadSchemaFromSegmentHosts() throws Exception {
         prepareReadableTable("avrotest_complex", AVRO_ALL_TYPES_FIELDS, hdfsPath + avroComplexFileName + SUFFIX_AVRO);
         String schemaPath = remotePublicStage + "/" + complexAvroFile;
         exTable.setExternalDataSchema(schemaPath);
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.complex_types.runTest");
+        runSqlTest("features/hdfs/readable/avro/complex_types");
     }
 
     /**
@@ -339,12 +325,11 @@ public class HdfsReadableAvroTest extends BaseFeature {
      * @throws Exception
      */
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @WorksWithFDW
     public void avroNull() throws Exception {
         prepareReadableTable("avrotest_null", AVRO_ALL_TYPES_FIELDS, hdfsPath + avroComplexFileName + SUFFIX_AVRO);
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.null_values.runTest");
+        runSqlTest("features/hdfs/readable/avro/null_values");
     }
 
     /**
@@ -353,7 +338,6 @@ public class HdfsReadableAvroTest extends BaseFeature {
      * @throws Exception
      */
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @WorksWithFDW
     public void avroComplexNull() throws Exception {
         prepareReadableTable("avrotest_complex_null", new String[]{
                 "sourcetimestamp              bigint",
@@ -384,7 +368,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
                 "meta_handlers                varchar(1000)"}, hdfsPath + avroComplexNullFileName + SUFFIX_AVRO);
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.complex_null_values.runTest");
+        runSqlTest("features/hdfs/readable/avro/complex_null_values");
     }
 
     /**
@@ -393,14 +377,13 @@ public class HdfsReadableAvroTest extends BaseFeature {
      * @throws Exception
      */
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @WorksWithFDW
     public void avroInSequenceFileArrays() throws Exception {
         prepareReadableTable("avro_in_seq_arrays", AVRO_SEQUENCE_FILE_FIELDS, hdfsPath + avroInSequenceArraysFileName);
         exTable.setProfile(ProtocolUtils.getProtocol().value() + ":AvroSequenceFile");
         exTable.setExternalDataSchema(avroInSequenceArraysSchemaFile);
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.avro_in_sequence_arrays.runTest");
+        runSqlTest("features/hdfs/readable/avro/avro_in_sequence_arrays");
     }
 
     /**
@@ -409,7 +392,6 @@ public class HdfsReadableAvroTest extends BaseFeature {
      * @throws Exception
      */
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @WorksWithFDW
     public void avroFileNameWithSpaces() throws Exception {
         prepareReadableTable("avro_in_seq_arrays", AVRO_SEQUENCE_FILE_FIELDS, hdfsPath + avroInSequenceArraysFileName);
         exTable.setProfile(ProtocolUtils.getProtocol().value() + ":AvroSequenceFile");
@@ -417,7 +399,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
         exTable.setFormatter("pxfwritable_import");
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.avro_in_sequence_arrays.runTest");
+        runSqlTest("features/hdfs/readable/avro/avro_in_sequence_arrays");
     }
 
 
@@ -427,7 +409,6 @@ public class HdfsReadableAvroTest extends BaseFeature {
      * @throws Exception
      */
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @WorksWithFDW
     public void avroFileNameWithSpacesOnHcfs() throws Exception {
         hdfs.copyFromLocal(resourcePath + avroInSequenceArraysSchemaFileWithSpaces, hdfsPath + avroInSequenceArraysSchemaFileWithSpaces);
         prepareReadableTable("avro_in_seq_arrays", AVRO_SEQUENCE_FILE_FIELDS, hdfsPath + avroInSequenceArraysFileName);
@@ -436,7 +417,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
         exTable.setExternalDataSchema(schemaPath);
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.avro_in_sequence_arrays.runTest");
+        runSqlTest("features/hdfs/readable/avro/avro_in_sequence_arrays");
     }
 
     /**
@@ -445,7 +426,6 @@ public class HdfsReadableAvroTest extends BaseFeature {
      * @throws Exception
      */
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @WorksWithFDW
     public void avroMultiFiles() throws Exception {
         String schemaName = resourcePath + avroInSequenceArraysSchemaFile;
 
@@ -467,7 +447,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
         gpdb.createTableAndVerify(exTable);
 
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.multi_files.runTest");
+        runSqlTest("features/hdfs/readable/avro/multi_files");
     }
 
     /**
@@ -476,7 +456,6 @@ public class HdfsReadableAvroTest extends BaseFeature {
      * @throws Exception
      */
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @WorksWithFDW
     public void avroCodecs() throws Exception {
         String schemaName = resourcePath + avroInSequenceArraysSchemaFile;
         Table dataTable = new Table("dataTable", null);
@@ -492,7 +471,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
             prepareReadableTable("avro_codec", AVRO_SEQUENCE_FILE_FIELDS, fileName);
             gpdb.createTableAndVerify(exTable);
             // Verify results
-            runTincTest("pxf.features.hdfs.readable.avro.codec.runTest");
+            runSqlTest("features/hdfs/readable/avro/codec");
         }
     }
 
@@ -503,7 +482,6 @@ public class HdfsReadableAvroTest extends BaseFeature {
      * @throws Exception
      */
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @FailsWithFDW
     public void extraField() throws Exception {
         prepareReadableTable("avro_extra_field", new String[]{
                 "name text",
@@ -511,7 +489,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
                 "alive boolean"}, hdfsPath + avroSimpleFileName + SUFFIX_AVRO);
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.errors.extra_field.runTest");
+        runSqlTest("features/hdfs/readable/avro/errors/extra_field");
     }
 
     /**
@@ -521,14 +499,13 @@ public class HdfsReadableAvroTest extends BaseFeature {
      * @throws Exception
      */
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @FailsWithFDW
     public void missingField() throws Exception {
         prepareReadableTable("avro_missing_field",
                 new String[]{"name text"},
                 hdfsPath + avroSimpleFileName + SUFFIX_AVRO);
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.errors.missing_field.runTest");
+        runSqlTest("features/hdfs/readable/avro/errors/missing_field");
     }
 
     /**
@@ -537,7 +514,6 @@ public class HdfsReadableAvroTest extends BaseFeature {
      * @throws Exception
      */
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
-    @FailsWithFDW
     public void noSchemaFile() throws Exception {
         prepareReadableTable("avro_in_seq_no_schema", AVRO_SEQUENCE_FILE_FIELDS, hdfsPath + avroInSequenceArraysFileName);
 
@@ -546,7 +522,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
         exTable.setExternalDataSchema("i_do_not_exist");
         gpdb.createTableAndVerify(exTable);
         // Verify results
-        runTincTest("pxf.features.hdfs.readable.avro.errors.no_schema_file.runTest");
+        runSqlTest("features/hdfs/readable/avro/errors/no_schema_file");
     }
 
     private void prepareData() throws Exception {

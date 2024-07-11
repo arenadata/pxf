@@ -19,7 +19,6 @@
 
 #include "pxfuriparser.h"
 #include "pxfutils.h"
-
 #include "utils/formatting.h"
 
 static const char *PTC_SEP = "://";
@@ -180,7 +179,7 @@ GPHDUri_parse_options(GPHDUri *uri, char **cursor)
 	/* skip '?' */
 	start++;
 
-	/* sanity check */
+	/* confidence check */
 	if (strlen(start) < 2)
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),
@@ -291,11 +290,8 @@ GPHDUri_verify_no_duplicate_options(GPHDUri *uri)
 	foreach(option, uri->options)
 	{
 		OptionData *data = (OptionData *) lfirst(option);
-#if PG_VERSION_NUM >= 90400
+
 		Value	   *key = makeString(asc_toupper(data->key, strlen(data->key)));
-#else
-		Value	   *key = makeString(str_toupper(data->key, strlen(data->key)));
-#endif
 
 		if (!list_member(previousKeys, key))
 			previousKeys = lappend(previousKeys, key);

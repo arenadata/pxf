@@ -251,6 +251,7 @@ dbop_pxfop_map pxf_supported_opr_op_expr[] =
 	{1335 /* interval_ge */ , PXFOP_GE},
 	{1331 /* interval_ne */ , PXFOP_NE},
 
+	/* uuid */
 	{UuidEqualOperator /* uuid_eq */ , PXFOP_EQ},
 	{2974 /* uuid_lt */ , PXFOP_LT},
 	{2975 /* uuid_gt */ , PXFOP_GT},
@@ -370,7 +371,6 @@ dbop_pxfop_array_map pxf_supported_opr_scalar_array_op_expr[] =
 	{3240 /* jsonb_eq */ , PXFOP_IN, true},
 	{3241 /* jsonb_ne */ , PXFOP_NOTIN, false},
 };
-
 
 /*
  * In GPDB 6 the following array macros are not defined.

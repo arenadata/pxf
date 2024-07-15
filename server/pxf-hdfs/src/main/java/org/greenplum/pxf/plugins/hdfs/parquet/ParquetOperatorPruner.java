@@ -2,11 +2,7 @@ package org.greenplum.pxf.plugins.hdfs.parquet;
 
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
-import org.greenplum.pxf.api.filter.ColumnIndexOperandNode;
-import org.greenplum.pxf.api.filter.Node;
-import org.greenplum.pxf.api.filter.Operator;
-import org.greenplum.pxf.api.filter.OperatorNode;
-import org.greenplum.pxf.api.filter.SupportedOperatorPruner;
+import org.greenplum.pxf.api.filter.*;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
 
 import java.util.EnumSet;
@@ -79,6 +75,10 @@ public class ParquetOperatorPruner extends SupportedOperatorPruner {
         ColumnDescriptor columnDescriptor = columnDescriptors.get(columnIndexOperand.index());
         String filterColumnName = columnDescriptor.columnName();
         Type type = fields.get(filterColumnName);
-        return type.asPrimitiveType().getPrimitiveTypeName();
+        if (type.isPrimitive()) {
+            return type.asPrimitiveType().getPrimitiveTypeName();
+        } else {
+            return null;
+        }
     }
 }

@@ -25,6 +25,7 @@
 -- make sure the pushdown is enabled for this test
 SET gp_external_enable_filter_pushdown = true;
 SET
+-- control - no predicates
 SELECT t0, a1, b2, c3, d4, e5, filterValue FROM test_filter;
  t0 | a1 | b2 |  c3  | d4 | e5 | filtervalue 
 ----+----+----+------+----+----+-------------

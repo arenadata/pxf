@@ -196,6 +196,9 @@ SELECT x5, filterValue FROM test_filter WHERE x5 IS NULL ORDER BY t0, a1;
 SELECT x5, filterValue FROM test_filter WHERE x5 IS NOT NULL ORDER BY t0, a1;
 
 -- bytea
+--start_ignore
+set bytea_output = 'hex';
+--end_ignore
 SELECT x6, filterValue FROM test_filter WHERE x6 = '\132greenplum\132'::bytea ORDER BY t0, a1;
 SELECT x6, filterValue FROM test_filter WHERE x6 < '\132greenplux\132'::bytea ORDER BY t0, a1;
 SELECT x6, filterValue FROM test_filter WHERE x6 <= '\132greenplum\132'::bytea ORDER BY t0, a1;
@@ -210,6 +213,9 @@ SELECT x6, filterValue FROM test_filter WHERE x6 BETWEEN '\132greenplum\132'::by
 SELECT x6, filterValue FROM test_filter WHERE x6 NOT BETWEEN '\132greenplup\132'::bytea AND 'sdas\132'::bytea ORDER BY t0, a1;
 SELECT x6, filterValue FROM test_filter WHERE x6 IS NULL ORDER BY t0, a1;
 SELECT x6, filterValue FROM test_filter WHERE x6 IS NOT NULL ORDER BY t0, a1;
+--start_ignore
+reset bytea_output;
+--end_ignore
 
 -- date
 SELECT x7, filterValue FROM test_filter WHERE x7 = '2023-01-11'::date ORDER BY t0, a1;
@@ -356,12 +362,18 @@ SELECT x21, filterValue FROM test_filter WHERE x21 IN (array[1.1::float8, 2.1::f
 SELECT x21, filterValue FROM test_filter WHERE x21 NOT IN (array[4::float8, 5::float8], array[5::float8, 6::float8]);
 
 -- bytea array
+--start_ignore
+set bytea_output = 'hex';
+--end_ignore
 SELECT x22, filterValue FROM test_filter WHERE x22 = array['\x78343142'::bytea,'\x78343242'::bytea] ORDER BY t0, a1;
 SELECT x22, filterValue FROM test_filter WHERE x22 <> array['\132greenplum\132'::bytea,'sdas\132'::bytea, null] ORDER BY t0, a1;
 SELECT x22, filterValue FROM test_filter WHERE x22 IS NULL ORDER BY t0, a1;
 SELECT x22, filterValue FROM test_filter WHERE x22 IS NOT NULL ORDER BY t0, a1;
 SELECT x22, filterValue FROM test_filter WHERE x22 IN (array['\x78343142'::bytea,'\x78343242'::bytea], array['sdas\132'::bytea]);
 SELECT x22, filterValue FROM test_filter WHERE x22 NOT IN (array['\132greenplum\132'::bytea,'sdas\132'::bytea, null], array['sdas\132'::bytea]);
+--start_ignore
+reset bytea_output;
+--end_ignore
 
 -- bpchar array
 SELECT x23, filterValue FROM test_filter WHERE x23 = array['AA'::bpchar(2), 'AA'::bpchar(2)] ORDER BY t0, a1;

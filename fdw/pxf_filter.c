@@ -28,6 +28,7 @@
 #include "utils/builtins.h"
 #include "utils/guc.h"
 #include "utils/lsyscache.h"
+#include "utils/typcache.h"
 
 static List *PxfMakeExpressionItemsList(List *quals, Node *parent);
 static void PxfFreeFilter(PxfFilterDesc *filter);
@@ -1044,6 +1045,8 @@ OpExprToPxfFilter(OpExpr *expr, PxfFilterDesc *filter)
 	Node	   *rightop = NULL;
 	Oid			rightop_type = InvalidOid;
 	Oid			leftop_type = InvalidOid;
+	TypeCacheEntry *typentry = NULL;
+	ArrayType	   *arr = NULL;
 
 	if ((!expr) || (!filter))
 		return false;
@@ -1066,18 +1069,6 @@ OpExprToPxfFilter(OpExpr *expr, PxfFilterDesc *filter)
 		 leftop_type, nodeTag(leftop),
 		 rightop_type, nodeTag(rightop),
 		 expr->opno);
-
-	/*
-	 * check if supported type -
-	 */
-	if (!SupportedFilterType(rightop_type) || !SupportedFilterType(leftop_type))
-		return false;
-
-	/*
-	 * check if supported operator -
-	 */
-	if (!SupportedOperatorTypeOpExpr(expr->opno, filter))
-		return false;
 
 	if (IsA(leftop, RelabelType))
 	{
@@ -1107,6 +1098,59 @@ OpExprToPxfFilter(OpExpr *expr, PxfFilterDesc *filter)
 		}
 	}
 
+	/*
+	 * check if GPDB supports scalar operators for the arrays elements before
+	 * sending the read request. Otherwise GPDB will reject the query during
+	 * ExecQual execution anyway after data is returned from pxf, because the
+	 * filter operator is not supported (for arrays comparison this validation
+	 * is not held during parsing stage and we have to prevent unnecessary
+	 * manipulations). Checking the existence of equality operator for array
+	 * element type is enough to validate other scalar operators as well.
+	 */
+	if (IsA(leftop, Var) && IsA(rightop, Const) &&
+		SupportedArrayType(rightop_type))
+	{
+		Const	*right = (Const *) rightop;
+
+		if (right->constisnull)
+			return false;
+
+		arr = DatumGetArrayTypeP(right->constvalue);
+	}
+	else if (IsA(leftop, Const) && IsA(rightop, Var) &&
+			SupportedArrayType(leftop_type))
+	{
+		Const	*left = (Const *) leftop;
+
+		if (left->constisnull)
+			return false;
+
+		arr = DatumGetArrayTypeP(left->constvalue);
+	}
+
+	if (arr != NULL)
+	{
+		typentry = lookup_type_cache(ARR_ELEMTYPE(arr),
+									 TYPECACHE_EQ_OPR_FINFO);
+
+		if (!OidIsValid(typentry->eq_opr_finfo.fn_oid))
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_FUNCTION),
+			errmsg("could not identify a comparison operator for type %s",
+				   format_type_be(ARR_ELEMTYPE(arr)))));
+	}
+
+	/*
+	 * check if supported type -
+	 */
+	if (!SupportedFilterType(rightop_type) || !SupportedFilterType(leftop_type))
+		return false;
+
+	/*
+	 * check if supported operator -
+	 */
+	if (!SupportedOperatorTypeOpExpr(expr->opno, filter))
+		return false;
 
 	/* arguments must be VAR and CONST */
 	if (IsA(leftop, Var) && IsA(rightop, Const))

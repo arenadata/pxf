@@ -405,7 +405,7 @@ SELECT x26, filterValue FROM test_filter WHERE x26 <> array['93d8f9c0-c314-447b-
 SELECT x26, filterValue FROM test_filter WHERE x26 IS NULL ORDER BY t0, a1;
 SELECT x26, filterValue FROM test_filter WHERE x26 IS NOT NULL ORDER BY t0, a1;
 SELECT x26, filterValue FROM test_filter WHERE x26 IN (array['93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, 'a56bc0c8-2128-4269-9ce5-cd9c102227b0'::uuid], array['93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, '93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, null]);
-SELECT x26, filterValue FROM test_filter WHERE x26 NOT IN (array['93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, '93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, null], array['93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, '93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, null]);
+SELECT x26, filterValue FROM test_filter WHERE x26 NOT IN (array['93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, '93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, null], array['93d8f9c1-c314-447b-8690-60c40facb8a5'::uuid, '93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, null]);
 
 -- numeric array
 SELECT x27, filterValue FROM test_filter WHERE x27 = array[1.1::numeric, 2.1::numeric] ORDER BY t0, a1;

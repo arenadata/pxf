@@ -1,4 +1,23 @@
-
+-- start_matchsubs
+--
+-- # filter values that are equivalent but have different operand order
+--
+-- m/a0c25s1dBo5a1o8l0/
+-- s/a0c25s1dBo5a1o8l0/a1o8a0c25s1dBo5l0/
+--
+-- m/a0c25s1dCo5a1c23s1d2o5a1c23s2d10o5l1l0/
+-- s/a0c25s1dCo5a1c23s1d2o5a1c23s2d10o5l1l0/a1c23s1d2o5a1c23s2d10o5l1a0c25s1dCo5l0/
+--
+-- m/a2c16s4dtrueo0l2a1c23s1d5o1l0/
+-- s/a2c16s4dtrueo0l2a1c23s1d5o1l0/a1c23s1d5o1a2c16s4dtrueo0l2l0/
+--
+-- m/a0c25s1dJo5a1c23s1d9o5a2c16s4dtrueo0l2a3c1700s4d9.91o5a4c1042s2dJJo5a5c25s2dJJo5l0l0l0l0l0/
+-- s/a0c25s1dJo5a1c23s1d9o5a2c16s4dtrueo0l2a3c1700s4d9.91o5a4c1042s2dJJo5a5c25s2dJJo5l0l0l0l0l0/a2c16s4dtrueo0l2a0c25s1dJo5a1c23s1d9o5a3c1700s4d9.91o5a4c1042s2dJJo5a5c25s2dJJo5l0l0l0l0l0/
+--
+-- m/o8l2/
+-- s/o8l2/o9/
+--
+-- end_matchsubs
 -----------------------------------------------------
 ------ Check that Filter Push Down is working -------
 -----------------------------------------------------
@@ -444,6 +463,9 @@ SELECT x5, filterValue FROM test_filter WHERE x5 IS NULL ORDER BY t0, a1;
 SELECT x5, filterValue FROM test_filter WHERE x5 IS NOT NULL ORDER BY t0, a1;
 
 -- bytea
+--start_ignore
+set bytea_output = 'hex';
+--end_ignore
 SELECT x6, filterValue FROM test_filter WHERE x6 = '\132greenplum\132'::bytea ORDER BY t0, a1;
 SELECT x6, filterValue FROM test_filter WHERE x6 < '\132greenplux\132'::bytea ORDER BY t0, a1;
 SELECT x6, filterValue FROM test_filter WHERE x6 <= '\132greenplum\132'::bytea ORDER BY t0, a1;
@@ -458,6 +480,9 @@ SELECT x6, filterValue FROM test_filter WHERE x6 BETWEEN '\132greenplum\132'::by
 SELECT x6, filterValue FROM test_filter WHERE x6 NOT BETWEEN '\132greenplup\132'::bytea AND 'sdas\132'::bytea ORDER BY t0, a1;
 SELECT x6, filterValue FROM test_filter WHERE x6 IS NULL ORDER BY t0, a1;
 SELECT x6, filterValue FROM test_filter WHERE x6 IS NOT NULL ORDER BY t0, a1;
+--start_ignore
+reset bytea_output;
+--end_ignore
 
 -- date
 SELECT x7, filterValue FROM test_filter WHERE x7 = '2023-01-11'::date ORDER BY t0, a1;
@@ -604,12 +629,18 @@ SELECT x21, filterValue FROM test_filter WHERE x21 IN (array[1.1::float8, 2.1::f
 SELECT x21, filterValue FROM test_filter WHERE x21 NOT IN (array[4::float8, 5::float8], array[5::float8, 6::float8]);
 
 -- bytea array
+--start_ignore
+set bytea_output = 'hex';
+--end_ignore
 SELECT x22, filterValue FROM test_filter WHERE x22 = array['\x78343142'::bytea,'\x78343242'::bytea] ORDER BY t0, a1;
 SELECT x22, filterValue FROM test_filter WHERE x22 <> array['\132greenplum\132'::bytea,'sdas\132'::bytea, null] ORDER BY t0, a1;
 SELECT x22, filterValue FROM test_filter WHERE x22 IS NULL ORDER BY t0, a1;
 SELECT x22, filterValue FROM test_filter WHERE x22 IS NOT NULL ORDER BY t0, a1;
 SELECT x22, filterValue FROM test_filter WHERE x22 IN (array['\x78343142'::bytea,'\x78343242'::bytea], array['sdas\132'::bytea]);
 SELECT x22, filterValue FROM test_filter WHERE x22 NOT IN (array['\132greenplum\132'::bytea,'sdas\132'::bytea, null], array['sdas\132'::bytea]);
+--start_ignore
+reset bytea_output;
+--end_ignore
 
 -- bpchar array
 SELECT x23, filterValue FROM test_filter WHERE x23 = array['AA'::bpchar(2), 'AA'::bpchar(2)] ORDER BY t0, a1;
@@ -641,7 +672,7 @@ SELECT x26, filterValue FROM test_filter WHERE x26 <> array['93d8f9c0-c314-447b-
 SELECT x26, filterValue FROM test_filter WHERE x26 IS NULL ORDER BY t0, a1;
 SELECT x26, filterValue FROM test_filter WHERE x26 IS NOT NULL ORDER BY t0, a1;
 SELECT x26, filterValue FROM test_filter WHERE x26 IN (array['93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, 'a56bc0c8-2128-4269-9ce5-cd9c102227b0'::uuid], array['93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, '93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, null]);
-SELECT x26, filterValue FROM test_filter WHERE x26 NOT IN (array['93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, '93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, null], array['93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, '93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, null]);
+SELECT x26, filterValue FROM test_filter WHERE x26 NOT IN (array['93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, '93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, null], array['93d8f9c1-c314-447b-8690-60c40facb8a5'::uuid, '93d8f9c0-c314-447b-8690-60c40facb8a5'::uuid, null]);
 
 -- numeric array
 SELECT x27, filterValue FROM test_filter WHERE x27 = array[1.1::numeric, 2.1::numeric] ORDER BY t0, a1;

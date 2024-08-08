@@ -20,23 +20,26 @@ package org.greenplum.pxf.service;
  */
 
 import com.google.common.util.concurrent.UncheckedExecutionException;
+import lombok.extern.slf4j.Slf4j;
 import org.greenplum.pxf.api.error.PxfRuntimeException;
 import org.greenplum.pxf.api.model.Fragment;
 import org.greenplum.pxf.api.model.Fragmenter;
 import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.service.fragment.FragmentDistributionPolicy;
+import org.greenplum.pxf.service.fragment.FragmentStrategy;
 import org.greenplum.pxf.api.utilities.FragmenterCacheFactory;
 import org.greenplum.pxf.service.utilities.AnalyzeUtils;
 import org.greenplum.pxf.service.utilities.BasePluginFactory;
 import org.greenplum.pxf.service.utilities.GSSFailureHandler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
@@ -46,55 +49,49 @@ import java.util.concurrent.ExecutionException;
  * request the list of fragments will populate it, while the rest of the
  * segments will wait until the list of fragments is populated.
  */
+@Slf4j
 @Component
 public class FragmenterService {
-
-    private static final Logger LOG = LoggerFactory.getLogger(FragmenterService.class);
+    public static final String FRAGMENT_DISTRIBUTION_POLICY_OPTION = "FRAGMENT_DISTRIBUTION_POLICY";
     public static final String ACTIVE_SEGMENT_COUNT_OPTION = "ACTIVE_SEGMENT_COUNT";
     private final BasePluginFactory pluginFactory;
     private final FragmenterCacheFactory fragmenterCacheFactory;
     private final GSSFailureHandler failureHandler;
+    private final Map<FragmentDistributionPolicy, FragmentStrategy> strategyMap = new HashMap<>();
 
     public FragmenterService(FragmenterCacheFactory fragmenterCacheFactory,
                              BasePluginFactory pluginFactory,
-                             GSSFailureHandler failureHandler) {
+                             GSSFailureHandler failureHandler,
+                             Collection<FragmentStrategy> strategies) {
         this.fragmenterCacheFactory = fragmenterCacheFactory;
         this.pluginFactory = pluginFactory;
         this.failureHandler = failureHandler;
+        strategies.forEach(strategy -> strategyMap.put(strategy.getDistributionPolicy(), strategy));
     }
 
     public List<Fragment> getFragmentsForSegment(RequestContext context) throws IOException {
-
-        LOG.trace("Received FRAGMENTER call");
-
-        // Get active segment count of logical segments which will take part in the request
-        int activeSegmentCount = getActiveSegmentCount(context);
-
+        log.trace("Received FRAGMENTER call");
         Instant startTime = Instant.now();
         final String path = context.getDataSource();
 
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("fragmentCache size={}, stats={}",
+        if (log.isDebugEnabled()) {
+            log.debug("fragmentCache size={}, stats={}",
                     fragmenterCacheFactory.getCache().size(),
                     fragmenterCacheFactory.getCache().stats());
+            log.debug("FRAGMENTER started for path \"{}\"", path);
         }
-
-        LOG.debug("FRAGMENTER started for path \"{}\"", path);
 
         List<Fragment> fragments = getFragmentsFromCache(context, startTime);
 
-        List<Fragment> filteredFragments = filterFragments(fragments,
-                context.getSegmentId(),
-                activeSegmentCount,
-                context.getTotalSegments(),
-                context.getGpSessionId(),
-                context.getGpCommandCount());
+        FragmentDistributionPolicy policy = getPolicyFromContext(context);
+        List<Fragment> filteredFragments = Optional.ofNullable(strategyMap.get(policy))
+                .map(strategy -> strategy.filterFragments(fragments, context))
+                .orElseThrow(() -> new PxfRuntimeException("The strategy for fragment distribution policy '" + policy.getName() + "' was not found"));
 
-        if (LOG.isDebugEnabled()) {
+        if (log.isDebugEnabled()) {
             int numberOfFragments = filteredFragments.size();
             long elapsedMillis = Duration.between(startTime, Instant.now()).toMillis();
-
-            LOG.debug("Returning {}/{} fragment{} for path {} in {} ms [profile={}, predicate {}available]",
+            log.debug("Returning {}/{} fragment{} for path {} in {} ms [profile={}, predicate {}available]",
                     numberOfFragments, fragments.size(), numberOfFragments == 1 ? "" : "s",
                     context.getDataSource(), elapsedMillis, context.getProfile(), context.hasFilter() ? "" : "un");
         }
@@ -102,22 +99,12 @@ public class FragmenterService {
         return filteredFragments;
     }
 
-    private int getActiveSegmentCount(RequestContext context) {
-        try {
-            int activeSegmentCount = Optional.ofNullable(context.getOptions().get(ACTIVE_SEGMENT_COUNT_OPTION))
-                    .map(Integer::valueOf)
-                    .orElse(context.getTotalSegments());
-            if (activeSegmentCount < 1 || activeSegmentCount > context.getTotalSegments()) {
-                String errorMessage = String.format("The parameter '%s' has the value %d. The value of this parameter " +
-                                "cannot be less than 1 or cannot be greater than the total amount of segments [%d segment(s)]",
-                        ACTIVE_SEGMENT_COUNT_OPTION, activeSegmentCount, context.getTotalSegments());
-                throw new PxfRuntimeException(errorMessage);
-            }
-            return activeSegmentCount;
-        } catch (Exception e) {
-            throw new PxfRuntimeException(String.format("Failed to get active segment count: %s. Check the value of the parameter '%s'",
-                    e.getMessage(), ACTIVE_SEGMENT_COUNT_OPTION), e);
-        }
+    private FragmentDistributionPolicy getPolicyFromContext(RequestContext context) {
+        return Optional.ofNullable(context.getOption(ACTIVE_SEGMENT_COUNT_OPTION))
+                .map(str -> FragmentDistributionPolicy.ACTIVE_SEGMENT) // for backward compatability
+                .orElseGet(() -> Optional.ofNullable(context.getOption(FRAGMENT_DISTRIBUTION_POLICY_OPTION))
+                        .map(FragmentDistributionPolicy::fromName)
+                        .orElse(FragmentDistributionPolicy.ROUND_ROBIN));
     }
 
     /**
@@ -137,7 +124,7 @@ public class FragmenterService {
         try {
             return fragmenterCacheFactory.getCache()
                     .get(fragmenterCacheKey, () -> {
-                        LOG.debug("Caching fragments from segmentId={} with key={}",
+                        log.debug("Caching fragments from segmentId={} with key={}",
                                 context.getSegmentId(), fragmenterCacheKey);
 
                         List<Fragment> fragmentList = failureHandler.execute(context.getConfiguration(),
@@ -150,7 +137,7 @@ public class FragmenterService {
                         int numberOfFragments = fragmentList.size();
                         long elapsedMillis = Duration.between(startTime, Instant.now()).toMillis();
                         String fragmenterClassName = context.getFragmenter();
-                        LOG.info("Returning {} fragment{} in {} ms [user={}, table={}.{}, resource={}, fragmenter={}, profile={}, predicate {}available]",
+                        log.info("Returning {} fragment{} in {} ms [user={}, table={}.{}, resource={}, fragmenter={}, profile={}, predicate {}available]",
                                 numberOfFragments,
                                 numberOfFragments == 1 ? "" : "s",
                                 elapsedMillis,
@@ -161,100 +148,15 @@ public class FragmenterService {
                                 fragmenterClassName.substring(fragmenterClassName.lastIndexOf(".") + 1),
                                 context.getProfile(),
                                 context.hasFilter() ? "" : "un");
-
                         return fragmentList;
                     });
         } catch (UncheckedExecutionException | ExecutionException e) {
-            // Unwrap the error
             Exception exception = e.getCause() != null ? (Exception) e.getCause() : e;
-            if (exception instanceof IOException)
+            if (exception instanceof IOException) {
                 throw (IOException) exception;
+            }
             throw new IOException(exception);
         }
-    }
-
-    /**
-     * Filters the {@code fragments} for the given segment. To determine which
-     * segment S should process an element at a given index i, use a randomized
-     * MOD function
-     * <p>
-     * S = MOD(I + MOD(gp_session_id, N) + gp_command_count, N)
-     * <p>
-     * which ensures more fair work distribution for small lists of just a few
-     * elements across N segments global session ID and command count are used
-     * as a randomizer, as it is different for every query, while being the
-     * same across all segments for a given query.
-     *
-     * @param fragments      the list of fragments
-     * @param segmentId      the identifier for the segment processing the request
-     * @param totalSegments  the total number of segments
-     * @param gpSessionId    the Greenplum session ID
-     * @param gpCommandCount the command number for this Greenplum Session ID
-     * @return the filtered list of fragments for the given segment
-     */
-    private List<Fragment> filterFragments(List<Fragment> fragments,
-                                           int segmentId,
-                                           int activeSegmentCount,
-                                           int totalSegments,
-                                           int gpSessionId,
-                                           int gpCommandCount) {
-        /*
-        We use a mod function inside the loop to distribute fragments across all N segments for processing
-        in a round-robin fashion, where each segment will be allocated to work on every N-th fragment.
-
-        We use an artificially shifted index so that queries with low fragment count are not always executed by
-        the low-numbered segments. This helps to spread out the workload across the cluster to different PXF JVMs.
-        Using gpCommandCount will ensure that consecutive queries for a single transaction are also shifted.
-        */
-        int shiftedIndex = gpSessionId % totalSegments + gpCommandCount; // index of fragment #0 to use for mod function
-
-        if (totalSegments == activeSegmentCount) {
-            List<Fragment> filteredFragments = new ArrayList<>((int) Math.ceil((double) fragments.size() / totalSegments));
-            for (Fragment fragment : fragments) {
-                if (segmentId == (shiftedIndex % totalSegments)) {
-                    filteredFragments.add(fragment);
-                }
-                shiftedIndex++;
-            }
-            return filteredFragments;
-        } else {
-            int index = 0;
-            List<Integer> activeSegmentList = getActiveSegmentList(shiftedIndex, activeSegmentCount, totalSegments);
-            List<Fragment> filteredFragments = new ArrayList<>((int) Math.ceil((double) fragments.size() / activeSegmentCount));
-            for (Fragment fragment : fragments) {
-                if (segmentId == activeSegmentList.get(index % activeSegmentList.size())) {
-                    filteredFragments.add(fragment);
-                }
-                index++;
-            }
-            return filteredFragments;
-        }
-    }
-
-    private static List<Integer> getActiveSegmentList(int shiftedIndex, int activeSegmentCount, int totalSegments) {
-        // We will try to distribute fragments evenly between segments hosts,
-        // but we don't know exactly how many logical segments per host.
-        // Also, we don't know how many segment hosts in the cluster.
-        List<Integer> activeSegmentList = new ArrayList<>();
-        while (activeSegmentCount > 0) {
-            int step = (int) Math.ceil((float) totalSegments / activeSegmentCount);
-            // How many segments might be evenly distributed with the step
-            int currentCount = totalSegments / step;
-            for (int i = 0; i < currentCount; i++) {
-                int id = shiftedIndex % totalSegments;
-                // We need to do shiftedIndex++ if the list has already contained the segment id
-                if (activeSegmentList.contains(id)) {
-                    shiftedIndex++;
-                    id = shiftedIndex % totalSegments;
-                }
-                activeSegmentList.add(id);
-                shiftedIndex += step;
-            }
-            // Get the rest of the segments and distribute them again if activeSegmentCount > 0
-            activeSegmentCount = activeSegmentCount - currentCount;
-        }
-        LOG.debug("The fragments will be distributed between segments with segment id: {}", activeSegmentList);
-        return activeSegmentList;
     }
 
     /**
@@ -298,7 +200,6 @@ public class FragmenterService {
         int index = 0;
         String sourceName = null;
         for (Fragment fragment : fragments) {
-
             String currentSourceName = fragment.getSourceName();
             if (!currentSourceName.equals(sourceName)) {
                 index = 0;

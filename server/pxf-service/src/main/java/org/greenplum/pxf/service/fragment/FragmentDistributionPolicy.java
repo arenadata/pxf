@@ -11,7 +11,8 @@ import java.util.stream.Collectors;
 public enum FragmentDistributionPolicy {
     ROUND_ROBIN("round-robin"),
     ACTIVE_SEGMENT("active-segment"),
-    IMPROVED_ROUND_ROBIN("improved-round-robin");
+    IMPROVED_ROUND_ROBIN("improved-round-robin"),
+    RANDOM("random");
 
     private final String name;
     public static final Map<String, FragmentDistributionPolicy> POLICY_NAME_MAP = Arrays.stream(FragmentDistributionPolicy.values())

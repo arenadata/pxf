@@ -84,6 +84,7 @@ public class FragmenterService {
         List<Fragment> fragments = getFragmentsFromCache(context, startTime);
 
         FragmentDistributionPolicy policy = getPolicyFromContext(context);
+        log.debug("The '{}' fragment distribution policy will be used", policy.getName());
         List<Fragment> filteredFragments = Optional.ofNullable(strategyMap.get(policy))
                 .map(strategy -> strategy.filterFragments(fragments, context))
                 .orElseThrow(() -> new PxfRuntimeException("The strategy for fragment distribution policy '" + policy.getName() + "' was not found"));

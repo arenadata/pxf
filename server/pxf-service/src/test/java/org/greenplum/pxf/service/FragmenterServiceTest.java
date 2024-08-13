@@ -39,19 +39,16 @@ class FragmenterServiceTest {
     @Mock
     private Fragmenter fragmenter3;
     @Mock
-    private RoundRobinFragmentStrategy roundRobinFragmentStrategy;
-    @Mock
-    private ActiveSegmentFragmentStrategy activeSegmentFragmentStrategy;
-    @Mock
-    private ImprovedRoundRobinFragmentStrategy improvedRoundRobinFragmentStrategy;
-    @Mock
     private FragmenterCacheFactory fragmenterCacheFactory;
+    @Mock
+    private FragmentStrategyProvider strategyProvider;
+    @Mock
+    private FragmentStrategy strategy;
+
     private Cache<String, List<Fragment>> fragmentCache;
-    private final List<FragmentStrategy> strategies = new ArrayList<>();
     private FakeTicker fakeTicker;
     private FragmenterService fragmenterService;
     private Configuration configuration;
-
     private RequestContext context1;
     private RequestContext context2;
 
@@ -85,24 +82,18 @@ class FragmenterServiceTest {
                 .build();
 
         lenient().when(fragmenterCacheFactory.getCache()).thenReturn(fragmentCache);
-
-        strategies.add(roundRobinFragmentStrategy);
-        strategies.add(activeSegmentFragmentStrategy);
-        strategies.add(improvedRoundRobinFragmentStrategy);
-        lenient().when(roundRobinFragmentStrategy.getDistributionPolicy()).thenReturn(FragmentDistributionPolicy.ROUND_ROBIN);
-        lenient().when(activeSegmentFragmentStrategy.getDistributionPolicy()).thenReturn(FragmentDistributionPolicy.ACTIVE_SEGMENT);
-        lenient().when(improvedRoundRobinFragmentStrategy.getDistributionPolicy()).thenReturn(FragmentDistributionPolicy.IMPROVED_ROUND_ROBIN);
+        lenient().when(strategyProvider.getStrategy(any(RequestContext.class))).thenReturn(strategy);
+        lenient().when(strategy.filterFragments(any(), any())).thenReturn(Collections.emptyList());
 
         // use a real handler to ensure pass-through calls on default configuration
         fragmenterService = new FragmenterService(fragmenterCacheFactory,
-                mockPluginFactory, new GSSFailureHandler(), strategies);
+                mockPluginFactory, new GSSFailureHandler(), strategyProvider);
     }
 
     @Test
     public void getFragmentsResponseFromEmptyCache() throws Throwable {
         when(mockPluginFactory.getPlugin(context1, context1.getFragmenter())).thenReturn(fragmenter1);
         when(fragmenter1.getFragments()).thenReturn(Collections.emptyList());
-
         fragmenterService.getFragmentsForSegment(context1);
         verify(fragmenter1, times(1)).getFragments();
     }
@@ -263,9 +254,7 @@ class FragmenterServiceTest {
         assertEquals(0, fragmentCache.size());
     }
 
-    private void testContextsAreNotCached(RequestContext context1, RequestContext context2)
-            throws Throwable {
-
+    private void testContextsAreNotCached(RequestContext context1, RequestContext context2) throws Throwable {
         List<Fragment> fragmentList1 = new ArrayList<>();
         List<Fragment> fragmentList2 = new ArrayList<>();
 
@@ -402,75 +391,5 @@ class FragmenterServiceTest {
         inOrder.verify(fragmenter3).getFragments(); // third  attempt on fragmenter #3
         inOrder.verifyNoMoreInteractions();
         verifyNoMoreInteractions(mockPluginFactory);
-    }
-
-    @Test
-    public void testDefaultFragmentDistributionPolicyOption() throws Exception {
-        List<Fragment> fragments = Collections.emptyList();
-        when(mockPluginFactory.getPlugin(context1, context1.getFragmenter())).thenReturn(fragmenter1);
-        when(fragmenter1.getFragments()).thenReturn(fragments);
-        fragmenterService.getFragmentsForSegment(context1);
-        verify(roundRobinFragmentStrategy, times(1)).filterFragments(fragments, context1);
-        verify(activeSegmentFragmentStrategy, never()).filterFragments(fragments, context1);
-        verify(improvedRoundRobinFragmentStrategy, never()).filterFragments(fragments, context1);
-    }
-
-    @Test
-    public void testRoundRobinFragmentDistributionPolicyOption() throws Exception {
-        List<Fragment> fragments = Collections.emptyList();
-        context1.addOption(FragmenterService.FRAGMENT_DISTRIBUTION_POLICY_OPTION, "round-robin");
-        when(mockPluginFactory.getPlugin(context1, context1.getFragmenter())).thenReturn(fragmenter1);
-        when(fragmenter1.getFragments()).thenReturn(fragments);
-        fragmenterService.getFragmentsForSegment(context1);
-        verify(roundRobinFragmentStrategy, times(1)).filterFragments(fragments, context1);
-        verify(activeSegmentFragmentStrategy, never()).filterFragments(fragments, context1);
-        verify(improvedRoundRobinFragmentStrategy, never()).filterFragments(fragments, context1);
-    }
-
-    @Test
-    public void testActiveSegmentFragmentDistributionPolicyOption() throws Exception {
-        List<Fragment> fragments = Collections.emptyList();
-        context1.addOption(FragmenterService.FRAGMENT_DISTRIBUTION_POLICY_OPTION, "active-segment");
-        when(mockPluginFactory.getPlugin(context1, context1.getFragmenter())).thenReturn(fragmenter1);
-        when(fragmenter1.getFragments()).thenReturn(fragments);
-        fragmenterService.getFragmentsForSegment(context1);
-        verify(activeSegmentFragmentStrategy, times(1)).filterFragments(fragments, context1);
-        verify(roundRobinFragmentStrategy, never()).filterFragments(fragments, context1);
-        verify(improvedRoundRobinFragmentStrategy, never()).filterFragments(fragments, context1);
-    }
-
-    @Test
-    public void testActiveSegmentFragmentDistributionPolicyOptionForBackwardCompatability() throws Exception {
-        List<Fragment> fragments = Collections.emptyList();
-        context1.addOption(FragmenterService.ACTIVE_SEGMENT_COUNT_OPTION, "1");
-        when(mockPluginFactory.getPlugin(context1, context1.getFragmenter())).thenReturn(fragmenter1);
-        when(fragmenter1.getFragments()).thenReturn(fragments);
-        fragmenterService.getFragmentsForSegment(context1);
-        verify(activeSegmentFragmentStrategy, times(1)).filterFragments(fragments, context1);
-        verify(roundRobinFragmentStrategy, never()).filterFragments(fragments, context1);
-        verify(improvedRoundRobinFragmentStrategy, never()).filterFragments(fragments, context1);
-    }
-
-    @Test
-    public void testImprovedRoundRobinFragmentDistributionPolicyOption() throws Exception {
-        List<Fragment> fragments = Collections.emptyList();
-        context1.addOption(FragmenterService.FRAGMENT_DISTRIBUTION_POLICY_OPTION, "improved-round-robin");
-        when(mockPluginFactory.getPlugin(context1, context1.getFragmenter())).thenReturn(fragmenter1);
-        when(fragmenter1.getFragments()).thenReturn(fragments);
-        fragmenterService.getFragmentsForSegment(context1);
-        verify(improvedRoundRobinFragmentStrategy, times(1)).filterFragments(fragments, context1);
-        verify(roundRobinFragmentStrategy, never()).filterFragments(fragments, context1);
-        verify(activeSegmentFragmentStrategy, never()).filterFragments(fragments, context1);
-    }
-
-    @Test
-    public void testStrategyPolicyNotFound() throws Exception {
-        List<Fragment> fragments = Collections.emptyList();
-        context1.addOption(FragmenterService.FRAGMENT_DISTRIBUTION_POLICY_OPTION, "fake-policy");
-        when(mockPluginFactory.getPlugin(context1, context1.getFragmenter())).thenReturn(fragmenter1);
-        when(fragmenter1.getFragments()).thenReturn(fragments);
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> fragmenterService.getFragmentsForSegment(context1));
-        String errorMessage = exception.getMessage();
-        assertEquals("Cannot find corresponding fragment distribution policy with name fake-policy", errorMessage);
     }
 }

@@ -5,7 +5,6 @@ import org.greenplum.pxf.api.error.PxfRuntimeException;
 import org.greenplum.pxf.api.examples.DemoFragmentMetadata;
 import org.greenplum.pxf.api.model.Fragment;
 import org.greenplum.pxf.api.model.RequestContext;
-import org.greenplum.pxf.service.FragmenterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -14,6 +13,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
+import static org.greenplum.pxf.service.fragment.FragmentStrategyProvider.ACTIVE_SEGMENT_COUNT_OPTION;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ActiveSegmentFragmentStrategyTest {
@@ -72,13 +72,13 @@ class ActiveSegmentFragmentStrategyTest {
         context1.setGpCommandCount(0);
         context1.setSegmentId(0);
         context1.setTotalSegments(2);
-        context1.addOption(FragmenterService.ACTIVE_SEGMENT_COUNT_OPTION, "1");
+        context1.addOption(ACTIVE_SEGMENT_COUNT_OPTION, "1");
 
         context2.setGpSessionId(0);
         context2.setGpCommandCount(0);
         context2.setSegmentId(1);
         context2.setTotalSegments(2);
-        context2.addOption(FragmenterService.ACTIVE_SEGMENT_COUNT_OPTION, "1");
+        context2.addOption(ACTIVE_SEGMENT_COUNT_OPTION, "1");
 
         List<Fragment> response1 = strategy.filterFragments(fragmentList, context1);
         List<Fragment> response2 = strategy.filterFragments(fragmentList, context2);
@@ -98,19 +98,19 @@ class ActiveSegmentFragmentStrategyTest {
         context1.setGpCommandCount(0);
         context1.setSegmentId(0);
         context1.setTotalSegments(3);
-        context1.addOption(FragmenterService.ACTIVE_SEGMENT_COUNT_OPTION, "2");
+        context1.addOption(ACTIVE_SEGMENT_COUNT_OPTION, "2");
 
         context2.setGpSessionId(0);
         context2.setGpCommandCount(0);
         context2.setSegmentId(1);
         context2.setTotalSegments(3);
-        context2.addOption(FragmenterService.ACTIVE_SEGMENT_COUNT_OPTION, "2");
+        context2.addOption(ACTIVE_SEGMENT_COUNT_OPTION, "2");
 
         context3.setGpSessionId(0);
         context3.setGpCommandCount(0);
         context3.setSegmentId(2);
         context3.setTotalSegments(3);
-        context3.addOption(FragmenterService.ACTIVE_SEGMENT_COUNT_OPTION, "2");
+        context3.addOption(ACTIVE_SEGMENT_COUNT_OPTION, "2");
 
         List<Fragment> response1 = strategy.filterFragments(fragmentList, context1);
         List<Fragment> response2 = strategy.filterFragments(fragmentList, context2);
@@ -138,19 +138,19 @@ class ActiveSegmentFragmentStrategyTest {
         context1.setGpCommandCount(0);
         context1.setSegmentId(0);
         context1.setTotalSegments(3);
-        context1.addOption(FragmenterService.ACTIVE_SEGMENT_COUNT_OPTION, "3");
+        context1.addOption(ACTIVE_SEGMENT_COUNT_OPTION, "3");
 
         context2.setGpSessionId(0);
         context2.setGpCommandCount(0);
         context2.setSegmentId(1);
         context2.setTotalSegments(3);
-        context2.addOption(FragmenterService.ACTIVE_SEGMENT_COUNT_OPTION, "3");
+        context2.addOption(ACTIVE_SEGMENT_COUNT_OPTION, "3");
 
         context3.setGpSessionId(0);
         context3.setGpCommandCount(0);
         context3.setSegmentId(2);
         context3.setTotalSegments(3);
-        context3.addOption(FragmenterService.ACTIVE_SEGMENT_COUNT_OPTION, "3");
+        context3.addOption(ACTIVE_SEGMENT_COUNT_OPTION, "3");
 
         List<Fragment> response1 = strategy.filterFragments(fragmentList, context1);
         List<Fragment> response2 = strategy.filterFragments(fragmentList, context2);
@@ -170,7 +170,7 @@ class ActiveSegmentFragmentStrategyTest {
         context1.setTransactionId("0");
         context1.setSegmentId(0);
         context1.setTotalSegments(1);
-        context1.addOption(FragmenterService.ACTIVE_SEGMENT_COUNT_OPTION, "WRONG");
+        context1.addOption(ACTIVE_SEGMENT_COUNT_OPTION, "WRONG");
 
         Exception e = assertThrows(PxfRuntimeException.class, () -> strategy.filterFragments(fragmentList, context1));
         assertEquals("Failed to get active segment count: For input string: \"WRONG\". Check the value of the parameter 'ACTIVE_SEGMENT_COUNT'", e.getMessage());
@@ -181,7 +181,7 @@ class ActiveSegmentFragmentStrategyTest {
         context1.setTransactionId("0");
         context1.setSegmentId(0);
         context1.setTotalSegments(1);
-        context1.addOption(FragmenterService.ACTIVE_SEGMENT_COUNT_OPTION, "0");
+        context1.addOption(ACTIVE_SEGMENT_COUNT_OPTION, "0");
 
         Exception e = assertThrows(PxfRuntimeException.class, () -> strategy.filterFragments(fragmentList, context1));
         assertTrue(e.getMessage().contains("The parameter 'ACTIVE_SEGMENT_COUNT' has the value 0. The value of this " +
@@ -202,7 +202,7 @@ class ActiveSegmentFragmentStrategyTest {
 
         Fragment fragment = new Fragment("mobile", new DemoFragmentMetadata());
         List<Fragment> fragmentList = new LinkedList<>();
-        for (int i=0; i<10000000; i++) {
+        for (int i = 0; i < 10000000; i++) {
             fragmentList.add(fragment); // add the same fragment, save on memory, we only care about testing timings
         }
 
@@ -210,7 +210,7 @@ class ActiveSegmentFragmentStrategyTest {
         context1.setTotalSegments(500);
         context1.setGpSessionId(500);
         context1.setGpCommandCount(0);
-        context1.addOption(FragmenterService.ACTIVE_SEGMENT_COUNT_OPTION, "50");
+        context1.addOption(ACTIVE_SEGMENT_COUNT_OPTION, "50");
 
         long start = System.currentTimeMillis();
         List<Fragment> fragments = strategy.filterFragments(fragmentList, context1);
@@ -219,7 +219,7 @@ class ActiveSegmentFragmentStrategyTest {
         assertInstanceOf(ArrayList.class, fragments);
         assertEquals(200000, fragments.size());
         assertEquals("mobile", fragments.get(0).getSourceName());
-        assertTrue(end-start < 10000L); // should be less than 10 secs (8x margin), not minutes
+        assertTrue(end - start < 10000L); // should be less than 10 secs (8x margin), not minutes
     }
 
     @Test

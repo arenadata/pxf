@@ -21,13 +21,11 @@ package org.greenplum.pxf.service;
 
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import lombok.extern.slf4j.Slf4j;
-import org.greenplum.pxf.api.error.PxfRuntimeException;
 import org.greenplum.pxf.api.model.Fragment;
 import org.greenplum.pxf.api.model.Fragmenter;
 import org.greenplum.pxf.api.model.RequestContext;
-import org.greenplum.pxf.service.fragment.FragmentDistributionPolicy;
-import org.greenplum.pxf.service.fragment.FragmentStrategy;
 import org.greenplum.pxf.api.utilities.FragmenterCacheFactory;
+import org.greenplum.pxf.service.fragment.FragmentStrategyProvider;
 import org.greenplum.pxf.service.utilities.AnalyzeUtils;
 import org.greenplum.pxf.service.utilities.BasePluginFactory;
 import org.greenplum.pxf.service.utilities.GSSFailureHandler;
@@ -36,11 +34,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -52,21 +46,19 @@ import java.util.concurrent.ExecutionException;
 @Slf4j
 @Component
 public class FragmenterService {
-    public static final String FRAGMENT_DISTRIBUTION_POLICY_OPTION = "FRAGMENT_DISTRIBUTION_POLICY";
-    public static final String ACTIVE_SEGMENT_COUNT_OPTION = "ACTIVE_SEGMENT_COUNT";
     private final BasePluginFactory pluginFactory;
     private final FragmenterCacheFactory fragmenterCacheFactory;
     private final GSSFailureHandler failureHandler;
-    private final Map<FragmentDistributionPolicy, FragmentStrategy> strategyMap = new HashMap<>();
+    private final FragmentStrategyProvider strategyProvider;
 
     public FragmenterService(FragmenterCacheFactory fragmenterCacheFactory,
                              BasePluginFactory pluginFactory,
                              GSSFailureHandler failureHandler,
-                             Collection<FragmentStrategy> strategies) {
+                             FragmentStrategyProvider strategyProvider) {
         this.fragmenterCacheFactory = fragmenterCacheFactory;
         this.pluginFactory = pluginFactory;
         this.failureHandler = failureHandler;
-        strategies.forEach(strategy -> strategyMap.put(strategy.getDistributionPolicy(), strategy));
+        this.strategyProvider = strategyProvider;
     }
 
     public List<Fragment> getFragmentsForSegment(RequestContext context) throws IOException {
@@ -83,11 +75,8 @@ public class FragmenterService {
 
         List<Fragment> fragments = getFragmentsFromCache(context, startTime);
 
-        FragmentDistributionPolicy policy = getPolicyFromContext(context);
-        log.debug("The '{}' fragment distribution policy will be used", policy.getName());
-        List<Fragment> filteredFragments = Optional.ofNullable(strategyMap.get(policy))
-                .map(strategy -> strategy.filterFragments(fragments, context))
-                .orElseThrow(() -> new PxfRuntimeException("The strategy for fragment distribution policy '" + policy.getName() + "' was not found"));
+        List<Fragment> filteredFragments = strategyProvider.getStrategy(context)
+                .filterFragments(fragments, context);
 
         if (log.isDebugEnabled()) {
             int numberOfFragments = filteredFragments.size();
@@ -96,16 +85,7 @@ public class FragmenterService {
                     numberOfFragments, fragments.size(), numberOfFragments == 1 ? "" : "s",
                     context.getDataSource(), elapsedMillis, context.getProfile(), context.hasFilter() ? "" : "un");
         }
-
         return filteredFragments;
-    }
-
-    private FragmentDistributionPolicy getPolicyFromContext(RequestContext context) {
-        return Optional.ofNullable(context.getOption(ACTIVE_SEGMENT_COUNT_OPTION))
-                .map(str -> FragmentDistributionPolicy.ACTIVE_SEGMENT) // for backward compatability
-                .orElseGet(() -> Optional.ofNullable(context.getOption(FRAGMENT_DISTRIBUTION_POLICY_OPTION))
-                        .map(FragmentDistributionPolicy::fromName)
-                        .orElse(FragmentDistributionPolicy.ROUND_ROBIN));
     }
 
     /**

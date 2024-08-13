@@ -4,16 +4,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.greenplum.pxf.api.error.PxfRuntimeException;
 import org.greenplum.pxf.api.model.Fragment;
 import org.greenplum.pxf.api.model.RequestContext;
-import org.greenplum.pxf.service.FragmenterService;
 import org.springframework.stereotype.Component;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Component
 public class ActiveSegmentFragmentStrategy implements FragmentStrategy {
     private static final FragmentDistributionPolicy DISTRIBUTION_POLICY = FragmentDistributionPolicy.ACTIVE_SEGMENT;
-    private static final String ACTIVE_SEGMENT_COUNT_OPTION = FragmenterService.ACTIVE_SEGMENT_COUNT_OPTION;
+    private static final String ACTIVE_SEGMENT_COUNT_OPTION = FragmentStrategyProvider.ACTIVE_SEGMENT_COUNT_OPTION;
 
     @Override
     public List<Fragment> filterFragments(Collection<Fragment> fragments, RequestContext context) {

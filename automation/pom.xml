@@ -28,11 +28,7 @@
     <repositories>
         <repository>
             <id>test-repo</id>
-            <url>https://jcenter.bintray.com/</url>
-        </repository>
-        <repository>
-            <id>test-repo-extra</id>
-            <url>https://maven.top-q.co.il/content/repositories/public/releases/</url>
+            <url>https://repository.jsweet.org/artifactory/libs-release/</url>
         </repository>
     </repositories>
 
@@ -163,12 +159,16 @@
         <dependency>
             <groupId>org.jsystemtest</groupId>
             <artifactId>jsystemCore</artifactId>
-            <version>6.0.01</version>
+            <version>6.1.05</version>
             <exclusions>
                 <!--  javax.comm provides applications access to RS-232 hardware - not needed -->
                 <exclusion>
                     <groupId>javax.comm</groupId>
                     <artifactId>comm</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>il.co.topq.difido</groupId>
+                    <artifactId>difido-reports-common</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -176,12 +176,16 @@
         <dependency>
             <groupId>org.jsystemtest.systemobjects</groupId>
             <artifactId>cli</artifactId>
-            <version>6.0.01</version>
+            <version>6.1.05</version>
             <exclusions>
                 <!--  javax.comm provides applications access to RS-232 hardware - not needed -->
                 <exclusion>
                     <groupId>javax.comm</groupId>
                     <artifactId>comm</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>il.co.topq.difido</groupId>
+                    <artifactId>difido-reports-common</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>

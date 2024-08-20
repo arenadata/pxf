@@ -32,7 +32,9 @@ public class FragmentDistributionTest extends BaseFeature {
     private static final String HDFS_4_ACTIVE_SEGMENT_EXT_TABLE_NAME = "fd_4_active_segment_hdfs_ext_table";
     private static final String HDFS_2_ACTIVE_SEGMENT_EXT_TABLE_NAME = "fd_2_active_segment_hdfs_ext_table";
     private static final String HDFS_RANDOM_EXT_TABLE_NAME = "fd_random_hdfs_ext_table";
-    private static final String HDFS_IMPROVED_ROUND_ROBIN_EXT_TABLE_NAME = "fd_improved_round_robin_hdfs_ext_table";
+    private static final String HDFS_IRR_MORE_EXT_TABLE_NAME = "fd_improved_round_robin_more_hdfs_ext_table";
+    private static final String HDFS_IRR_EVEN_EXT_TABLE_NAME = "fd_improved_round_robin_even_hdfs_ext_table";
+    private static final String HDFS_IRR_LESS_EXT_TABLE_NAME = "fd_improved_round_robin_less_hdfs_ext_table";
     private static final String[] SOURCE_TABLE_FIELDS = new String[]{
             "id    int",
             "descr   text"};
@@ -46,8 +48,10 @@ public class FragmentDistributionTest extends BaseFeature {
     private static final String PXF_LOG_CHECK_POLICY_TEMPLATE = CAT_COMMAND + "| grep \"The '%s' fragment distribution policy will be used\" | wc -l";
     private List<Node> pxfNodes;
     private String pxfLogFile;
+    private String hdfsPathWith2Files;
     private String hdfsPathWith6Files;
     private String hdfsPathWith8Files;
+    private String hdfsPathWith12Files;
     private Table postgresSourceTable;
     private String restartCommand;
 
@@ -59,8 +63,10 @@ public class FragmentDistributionTest extends BaseFeature {
             pxfNodes = ((MultiNodeCluster) cluster).getNode(SegmentNode.class, PhdCluster.EnumClusterServices.pxf);
         }
         pxfLogFile = pxfHome + "/" + PXF_LOG_RELATIVE_PATH;
+        hdfsPathWith2Files = hdfs.getWorkingDirectory() + "/text_fragment_distribution_2/";
         hdfsPathWith6Files = hdfs.getWorkingDirectory() + "/text_fragment_distribution_6/";
         hdfsPathWith8Files = hdfs.getWorkingDirectory() + "/text_fragment_distribution_8/";
+        hdfsPathWith12Files = hdfs.getWorkingDirectory() + "/text_fragment_distribution_12/";
         prepareData();
         changeLogLevel("debug");
         cluster.runCommand("mkdir -p " + PXF_TEMP_LOG_PATH);
@@ -73,8 +79,10 @@ public class FragmentDistributionTest extends BaseFeature {
 
     protected void prepareData() throws Exception {
         preparePgSourceTable();
+        prepareHdfsFiles(2, hdfsPathWith2Files);
         prepareHdfsFiles(6, hdfsPathWith6Files);
         prepareHdfsFiles(8, hdfsPathWith8Files);
+        prepareHdfsFiles(12, hdfsPathWith12Files);
         createGpdbReadableJdbcTable();
         createGpdbReadableJdbcTableWithLimit();
         createGpdbReadableJdbcTableWithActiveSegmentDistribution();
@@ -86,7 +94,9 @@ public class FragmentDistributionTest extends BaseFeature {
         createGpdbReadableHdfsTableWith4ActiveSegmentDistribution();
         createGpdbReadableHdfsTableWith2ActiveSegmentDistribution();
         createGpdbReadableHdfsTableWithRandomDistribution();
-        createGpdbReadableHdfsTableWithImprovedRoundRobinDistribution();
+        createGpdbReadableHdfsTableWithImprovedRoundRobinDistribution(HDFS_IRR_MORE_EXT_TABLE_NAME, hdfsPathWith8Files);
+        createGpdbReadableHdfsTableWithImprovedRoundRobinDistribution(HDFS_IRR_EVEN_EXT_TABLE_NAME, hdfsPathWith12Files);
+        createGpdbReadableHdfsTableWithImprovedRoundRobinDistribution(HDFS_IRR_LESS_EXT_TABLE_NAME, hdfsPathWith2Files);
     }
 
     private void preparePgSourceTable() throws Exception {
@@ -217,11 +227,11 @@ public class FragmentDistributionTest extends BaseFeature {
         gpdb.createTableAndVerify(gpdbReadableHdfsTable);
     }
 
-    private void createGpdbReadableHdfsTableWithImprovedRoundRobinDistribution() throws Exception {
+    private void createGpdbReadableHdfsTableWithImprovedRoundRobinDistribution(String tableName, String sourcePath) throws Exception {
         ReadableExternalTable gpdbReadableHdfsTable = TableFactory.getPxfReadableCSVTable(
-                HDFS_IMPROVED_ROUND_ROBIN_EXT_TABLE_NAME,
+                tableName,
                 SOURCE_TABLE_FIELDS,
-                hdfsPathWith8Files,
+                sourcePath,
                 DELIMITER);
         gpdbReadableHdfsTable.setUserParameters(new String[]{"FRAGMENT_DISTRIBUTION_POLICY=improved-round-robin"});
         gpdb.createTableAndVerify(gpdbReadableHdfsTable);
@@ -494,17 +504,19 @@ public class FragmentDistributionTest extends BaseFeature {
     }
 
     /**
-     * Check improved-round-robin fragments distribution policy with HDFS profile.
+     * Check improved-round-robin fragments distribution policy with HDFS profile when fragment count is more
+     * than segment count but not equal to an even number of segments.
      * Parameters: FRAGMENT_DISTRIBUTION_POLICY=improved-round-robin
      * checkPolicyResult has to have 3 lines per node (1 per each logical segment on the segment host)
      * checkIdleSegments has to be 0 as each segment will get at least 1 fragment;
      * fragmentsCount has to be 4 for each segment host as we have 8 fragments total. The policy will
      * distribute 6 fragments between all segments and the rest 2 fragments will be distributed between segment hosts evenly
      */
-    @Test(groups = {"arenadata"}, description = "Check HDFS fragments distribution across segments with improved-round-robin distribution policy")
-    public void fragmentDistributionForHdfsWithImprovedRoundRobinPolicyTest() throws Exception {
+    @Test(groups = {"arenadata"}, description = "Check HDFS fragments distribution across segments with improved-round-robin " +
+            "distribution policy when fragment count is more than segment count but not equal to an even number of segments")
+    public void fragmentDistributionForHdfsWithIrrPolicyWithMoreFragmentsTest() throws Exception {
         cleanLogs();
-        runSqlTest("arenadata/fragment-distribution/hdfs-irr-policy");
+        runSqlTest("arenadata/fragment-distribution/hdfs-irr-more-policy");
         for (Node pxfNode : pxfNodes) {
             cluster.copyFromRemoteMachine(pxfNode.getUserName(), pxfNode.getPassword(), pxfNode.getHost(), pxfLogFile, PXF_TEMP_LOG_PATH);
             copyLogs(getMethodName(), pxfNode.getHost());
@@ -514,6 +526,59 @@ public class FragmentDistributionTest extends BaseFeature {
             assertEquals("0", checkIdleSegments);
             String fragmentsCount = getCmdResult(cluster, PXF_LOG_GET_FRAGMENTS_COUNT);
             assertEquals("4", fragmentsCount);
+            cluster.deleteFileFromNodes(PXF_TEMP_LOG_FILE, false);
+        }
+    }
+
+    /**
+     * Check improved-round-robin fragments distribution policy with HDFS profile when fragment count is equal to an even number of segments.
+     * Parameters: FRAGMENT_DISTRIBUTION_POLICY=improved-round-robin
+     * checkPolicyResult has to have 3 lines per node (1 per each logical segment on the segment host)
+     * checkIdleSegments has to be 0 as each segment will get at least 1 fragment;
+     * fragmentsCount has to be 6 for each segment host as we have 12 fragments total. The policy will
+     * distribute 2 fragments for each logical segment.
+     */
+    @Test(groups = {"arenadata"}, description = "Check HDFS fragments distribution across segments with improved-round-robin " +
+            "distribution policy when fragment count is equal to an even number of segments")
+    public void fragmentDistributionForHdfsWithIrrPolicyWithEvenFragmentsTest() throws Exception {
+        cleanLogs();
+        runSqlTest("arenadata/fragment-distribution/hdfs-irr-even-policy");
+        for (Node pxfNode : pxfNodes) {
+            cluster.copyFromRemoteMachine(pxfNode.getUserName(), pxfNode.getPassword(), pxfNode.getHost(), pxfLogFile, PXF_TEMP_LOG_PATH);
+            copyLogs(getMethodName(), pxfNode.getHost());
+            String checkPolicyResult = getCmdResult(cluster, String.format(PXF_LOG_CHECK_POLICY_TEMPLATE, "improved-round-robin"));
+            assertEquals("3", checkPolicyResult);
+            String checkIdleSegments = getCmdResult(cluster, PXF_LOG_GET_IDLE_SEGMENTS);
+            assertEquals("0", checkIdleSegments);
+            String fragmentsCount = getCmdResult(cluster, PXF_LOG_GET_FRAGMENTS_COUNT);
+            assertEquals("6", fragmentsCount);
+            cluster.deleteFileFromNodes(PXF_TEMP_LOG_FILE, false);
+        }
+    }
+
+    /**
+     * Check improved-round-robin fragments distribution policy with HDFS profile when fragment count is less
+     * than segment count.
+     * Parameters: FRAGMENT_DISTRIBUTION_POLICY=improved-round-robin
+     * checkPolicyResult has to have 3 lines per node (1 per each logical segment on the segment host)
+     * checkIdleSegments has to be 2 as we have only 2 fragments and they should be on a different segment hosts;
+     * fragmentsCount has to be 1 for each segment host as we have 2 fragments total. The policy will
+     * split these 2 fragments between 2 segment hosts evenly.
+     */
+    @Test(groups = {"arenadata"}, description = "Check HDFS fragments distribution across segments with improved-round-robin " +
+            "distribution policy when fragment count is less than segment count")
+    public void fragmentDistributionForHdfsWithIrrPolicyWithLessFragmentsTest() throws Exception {
+        cleanLogs();
+        runSqlTest("arenadata/fragment-distribution/hdfs-irr-less-policy");
+        for (Node pxfNode : pxfNodes) {
+            cluster.copyFromRemoteMachine(pxfNode.getUserName(), pxfNode.getPassword(), pxfNode.getHost(), pxfLogFile, PXF_TEMP_LOG_PATH);
+            copyLogs(getMethodName(), pxfNode.getHost());
+            String checkPolicyResult = getCmdResult(cluster, String.format(PXF_LOG_CHECK_POLICY_TEMPLATE, "improved-round-robin"));
+            assertEquals("3", checkPolicyResult);
+            String checkIdleSegments = getCmdResult(cluster, PXF_LOG_GET_IDLE_SEGMENTS);
+            assertEquals("2", checkIdleSegments);
+            String fragmentsCount = getCmdResult(cluster, PXF_LOG_GET_FRAGMENTS_COUNT);
+            assertEquals("1", fragmentsCount);
             cluster.deleteFileFromNodes(PXF_TEMP_LOG_FILE, false);
         }
     }

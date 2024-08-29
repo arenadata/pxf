@@ -40,6 +40,9 @@ RUN set -eux; \
          ;; \
        ubuntu*) \
          apt install -y openjdk-11-jdk; \
+         echo '#!/bin/sh' >> /etc/profile.d/jdk_home.sh; \
+         echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64' >> /etc/profile.d/jdk_home.sh; \
+         echo 'export PATH=$JAVA_HOME/bin:$PATH' >> /etc/profile.d/jdk_home.sh; \
          ;; \
        *) \
          echo "Unknown OS: '$OS'"; \
@@ -60,7 +63,7 @@ RUN bash -c "mkdir -p /data1/master /data1/primary /data1/mirror && chmod -R 755
     install_gpdb"
 
 # Install PXF
-#ENV JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8
+ENV JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8
 ENV OUTPUT_ARTIFACT_DIR="pxf_tarball"
 COPY . /home/gpadmin/pxf_src
 COPY ./automation/arenadata/scripts/compile_pxf_without_test.sh ./pxf_src/concourse/scripts/compile_pxf_without_test.sh

@@ -358,7 +358,6 @@ function setup_gpadmin_user() {
 		gpadmin soft nproc 131072
 		gpadmin soft nofile 65536
 	EOF
-#	echo "export JAVA_HOME=${JAVA_HOME}" >> ~gpadmin/.bashrc
 	if [[ -d gpdb_src/gpAux/gpdemo ]]; then
 		chown -R gpadmin:gpadmin gpdb_src/gpAux/gpdemo
 	fi

@@ -1,7 +1,5 @@
-FROM hub.adsw.io/library/gpdb6_regress:adb-6.x-dev
-
-# Update epel repo
-RUN yum-config-manager --disable epel && yum-config-manager --add-repo 'http://archives.fedoraproject.org/pub/archive/epel/7/$basearch'
+ARG GPDB_IMAGE=gpdb6_regress:latest
+FROM hub.adsw.io/library/$GPDB_IMAGE
 
 # install maven
 RUN curl -fSL https://dlcdn.apache.org/maven/maven-3/3.9.6/binaries/apache-maven-3.9.6-bin.tar.gz -o /tmp/apache-maven-3.9.6-bin.tar.gz \
@@ -34,6 +32,19 @@ RUN set -eux; \
          echo "Unsupported arch: ${ARCH}"; \
          exit 1; \
          ;; \
+    esac; \
+    . /etc/os-release; \
+    case "$ID" in \
+       centos*) \
+         yum-config-manager --disable epel && yum-config-manager --add-repo 'http://archives.fedoraproject.org/pub/archive/epel/7/$basearch'; \
+         ;; \
+       ubuntu*) \
+         apt install -y openjdk-11-jdk; \
+         ;; \
+       *) \
+         echo "Unknown OS: '$OS'"; \
+         exit 1; \
+         ;; \
     esac;
 ENV GOPATH=$HOME/go
 ENV PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
@@ -41,25 +52,26 @@ RUN go install github.com/onsi/ginkgo/ginkgo@latest
 
 # Install gpdb source files
 WORKDIR /home/gpadmin/
-RUN mkdir -p /data1/master /data1/primary /data1/mirror && chmod -R 755 /data1 && \
+RUN bash -c "mkdir -p /data1/master /data1/primary /data1/mirror && chmod -R 755 /data1 && \
     gpdb_src/concourse/scripts/setup_gpadmin_user.bash && \
     source gpdb_src/concourse/scripts/common.bash  && \
     chown -R gpadmin:gpadmin /data1 && \
     chown -R gpadmin:gpadmin /home/gpadmin && \
-    install_gpdb
+    install_gpdb"
 
 # Install PXF
+#ENV JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8
 ENV OUTPUT_ARTIFACT_DIR="pxf_tarball"
 COPY . /home/gpadmin/pxf_src
 COPY ./automation/arenadata/scripts/compile_pxf_without_test.sh ./pxf_src/concourse/scripts/compile_pxf_without_test.sh
 RUN chmod +x ./pxf_src/concourse/scripts/compile_pxf_without_test.sh
-RUN source gpdb_src/concourse/scripts/common.bash && \
+RUN bash -c "source gpdb_src/concourse/scripts/common.bash && \
     mkdir pxf_tarball && \
     install_gpdb && \
     source '/usr/local/greenplum-db-devel/greenplum_path.sh' && \
     export SKIP_FDW_BUILD_REASON=0 && \
     pxf_src/concourse/scripts/compile_pxf_without_test.sh && \
-    chown -R gpadmin:gpadmin /home/gpadmin/pxf_src
+    chown -R gpadmin:gpadmin /home/gpadmin/pxf_src"
 
 RUN mkdir workspace && ln -s /home/gpadmin/pxf_src /home/gpadmin/workspace/pxf && chown -R gpadmin:gpadmin /home/gpadmin/workspace
 

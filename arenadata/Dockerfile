@@ -1,7 +1,5 @@
-FROM hub.adsw.io/library/gpdb6_regress:adb-6.x-dev as base
-
-# Update epel repo
-RUN yum-config-manager --disable epel && yum-config-manager --add-repo 'http://archives.fedoraproject.org/pub/archive/epel/7/$basearch'
+ARG GPDB_IMAGE=gpdb6_regress:latest
+FROM hub.adsw.io/library/$GPDB_IMAGE as base
 
 # install go, ginkgo and keep env variables which may be used as a part of base image
 RUN set -eux; \
@@ -21,6 +19,19 @@ RUN set -eux; \
          ;; \
        *) \
          echo "Unsupported arch: ${ARCH}"; \
+         exit 1; \
+         ;; \
+    esac; \
+    . /etc/os-release; \
+    case "$ID" in \
+       centos*) \
+         yum-config-manager --disable epel && yum-config-manager --add-repo 'http://archives.fedoraproject.org/pub/archive/epel/7/$basearch'; \
+         ;; \
+       ubuntu*) \
+         apt install -y openjdk-11-jdk; \
+         ;; \
+       *) \
+         echo "Unknown OS: '$OS'"; \
          exit 1; \
          ;; \
     esac;
@@ -43,13 +54,14 @@ WORKDIR /tmp/build
 
 # create separate image with files we don't want to keep in base image
 FROM base as build
+ENV JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8
 COPY . /tmp/build/pxf_src
-RUN source gpdb_src/concourse/scripts/common.bash && \
+RUN bash -c "source gpdb_src/concourse/scripts/common.bash && \
     install_gpdb && \
     source '/usr/local/greenplum-db-devel/greenplum_path.sh' && \
     mkdir ${OUTPUT_ARTIFACT_DIR} && \
     export SKIP_FDW_BUILD_REASON=0 && \
-    pxf_src/concourse/scripts/compile_pxf.bash
+    pxf_src/concourse/scripts/compile_pxf.bash"
 
 # create test image which prepares base image and keeps only pxf artifacts from build image
 FROM base as test

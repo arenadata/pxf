@@ -2,7 +2,6 @@
 
 build_images=$1
 run_test_service_name=mdw
-export GPDB_IMAGE=gpdb6_u22:ADBDEV-4688-x86-64
 
 # Set a variable to check the results of all tests at the end of the script
 test_result_status=0

@@ -53,14 +53,15 @@ ENV GOPATH=$HOME/go
 ENV PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
 RUN go install github.com/onsi/ginkgo/ginkgo@latest
 
+SHELL bash
 # Install gpdb source files
 WORKDIR /home/gpadmin/
-RUN bash -c "mkdir -p /data1/master /data1/primary /data1/mirror && chmod -R 755 /data1 && \
+RUN mkdir -p /data1/master /data1/primary /data1/mirror && chmod -R 755 /data1 && \
     gpdb_src/concourse/scripts/setup_gpadmin_user.bash && \
     source gpdb_src/concourse/scripts/common.bash  && \
     chown -R gpadmin:gpadmin /data1 && \
     chown -R gpadmin:gpadmin /home/gpadmin && \
-    install_gpdb"
+    install_gpdb
 
 # Install PXF
 ENV JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8
@@ -68,13 +69,13 @@ ENV OUTPUT_ARTIFACT_DIR="pxf_tarball"
 COPY . /home/gpadmin/pxf_src
 COPY ./automation/arenadata/scripts/compile_pxf_without_test.sh ./pxf_src/concourse/scripts/compile_pxf_without_test.sh
 RUN chmod +x ./pxf_src/concourse/scripts/compile_pxf_without_test.sh
-RUN bash -c "source gpdb_src/concourse/scripts/common.bash && \
+RUN source gpdb_src/concourse/scripts/common.bash && \
     mkdir pxf_tarball && \
     install_gpdb && \
     source '/usr/local/greenplum-db-devel/greenplum_path.sh' && \
     export SKIP_FDW_BUILD_REASON=0 && \
     pxf_src/concourse/scripts/compile_pxf_without_test.sh && \
-    chown -R gpadmin:gpadmin /home/gpadmin/pxf_src"
+    chown -R gpadmin:gpadmin /home/gpadmin/pxf_src
 
 RUN mkdir workspace && ln -s /home/gpadmin/pxf_src /home/gpadmin/workspace/pxf && chown -R gpadmin:gpadmin /home/gpadmin/workspace
 

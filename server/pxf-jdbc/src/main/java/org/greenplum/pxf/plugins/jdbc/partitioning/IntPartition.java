@@ -19,44 +19,22 @@ package org.greenplum.pxf.plugins.jdbc.partitioning;
  * under the License.
  */
 
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import org.greenplum.pxf.plugins.jdbc.utils.DbProduct;
+import java.util.Objects;
 
-import java.util.stream.Stream;
+public interface IntPartition extends JdbcFragmentMetadata {
+    Long getStart();
+    Long getEnd();
 
-@NoArgsConstructor
-public class IntPartition extends BasePartition implements JdbcFragmentMetadata {
-
-    @Getter
-    private Long[] boundaries;
-
-    /**
-     * @param column the partition column
-     * @param start  null for right-bounded interval
-     * @param end    null for left-bounded interval
-     */
-    public IntPartition(String column, Long start, Long end) {
-        this(column, (start == end) ? new Long[]{start} : new Long[]{start, end});
+    static IntPartition create(String column, Long start, Long end) {
         if (start == null && end == null) {
             throw new RuntimeException("Both boundaries cannot be null");
         }
+        return Objects.equals(start, end) ?
+                new IntValuePartition(column, start) :
+                new IntRangePartition(column, start, end);
     }
 
-    public IntPartition(String column, Long[] boundaries) {
-        super(column);
-        this.boundaries = boundaries;
-    }
-
-    @Override
-    public String toSqlConstraint(String quoteString, DbProduct dbProduct) {
-        if (quoteString == null) {
-            throw new RuntimeException("Quote string cannot be null");
-        }
-
-        return generateRangeConstraint(
-                quoteString + column + quoteString,
-                Stream.of(boundaries).map(b -> b == null ? null : b.toString()).toArray(String[]::new)
-        );
+    static String convert(Long b) {
+        return b == null ? null : b.toString();
     }
 }

@@ -19,7 +19,7 @@ package org.greenplum.pxf.plugins.jdbc.partitioning;
  * under the License.
  */
 
-import lombok.NoArgsConstructor;
+import lombok.Getter;
 import org.greenplum.pxf.plugins.jdbc.utils.DbProduct;
 
 /**
@@ -30,10 +30,10 @@ import org.greenplum.pxf.plugins.jdbc.utils.DbProduct;
  * Currently, only {@link NullPartition#NullPartition(String)} is used to construct this class.
  * In other words, IS NOT NULL is never used (but is supported).
  */
-@NoArgsConstructor
+@Getter
 class NullPartition extends BasePartition implements JdbcFragmentMetadata {
 
-    private boolean isNull;
+    private final boolean isNull;
 
     /**
      * Construct a NullPartition with the given column and constraint
@@ -57,18 +57,7 @@ class NullPartition extends BasePartition implements JdbcFragmentMetadata {
 
     @Override
     public String toSqlConstraint(String quoteString, DbProduct dbProduct) {
-        if (quoteString == null) {
-            throw new RuntimeException("Quote string cannot be null");
-        }
-
-        return quoteString + column + quoteString +
+        return getQuotedColumn(quoteString) +
                 (isNull ? " IS NULL" : " IS NOT NULL");
-    }
-
-    /**
-     * Getter
-     */
-    public boolean isNull() {
-        return isNull;
     }
 }

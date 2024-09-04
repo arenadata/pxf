@@ -1,4 +1,7 @@
-FROM hub.adsw.io/library/gpdb6_regress:latest as base
+FROM hub.adsw.io/library/gpdb6_regress:adb-6.x-dev as base
+
+# Update epel repo
+RUN yum-config-manager --disable epel && yum-config-manager --add-repo 'http://archives.fedoraproject.org/pub/archive/epel/7/$basearch'
 
 # install go, ginkgo and keep env variables which may be used as a part of base image
 RUN set -eux; \

@@ -474,8 +474,7 @@ public abstract class TableFactory {
      */
     public static HiveTable getHiveByRowCommaTable(String name, String[] fields) {
 
-    	HiveTable table = getHiveByRowCommaTable(name, null, fields);
-        return table;
+        return getHiveByRowCommaTable(name, null, fields);
     }
 
 
@@ -516,7 +515,7 @@ public abstract class TableFactory {
                                                          String server, String customParameters) {
         ExternalTable exTable = getReadableExternalOrForeignTable(name, fields,
                 dataSourcePath, "CUSTOM");
-        List<String> userParameters = new ArrayList<String>();
+        List<String> userParameters = new ArrayList<>();
         if (driver != null) {
             userParameters.add("JDBC_DRIVER=" + driver);
         }
@@ -544,7 +543,7 @@ public abstract class TableFactory {
         if (customParameters != null) {
             userParameters.add(customParameters);
         }
-        exTable.setUserParameters(userParameters.toArray(new String[userParameters.size()]));
+        exTable.setUserParameters(userParameters.toArray(new String[0]));
         exTable.setProfile("jdbc");
         exTable.setFormatter("pxfwritable_import");
 
@@ -567,7 +566,7 @@ public abstract class TableFactory {
             String dbUrl, String user, String customParameters) {
 
         ExternalTable exTable = getWritableExternalOrForeignTable(name, fields, dataSourcePath, "CUSTOM");
-        List<String> userParameters = new ArrayList<String>();
+        List<String> userParameters = new ArrayList<>();
         if (driver != null) {
             userParameters.add("JDBC_DRIVER=" + driver);
         }
@@ -580,7 +579,7 @@ public abstract class TableFactory {
         if (customParameters != null) {
             userParameters.add(customParameters);
         }
-        exTable.setUserParameters(userParameters.toArray(new String[userParameters.size()]));
+        exTable.setUserParameters(userParameters.toArray(new String[0]));
         exTable.setProfile("jdbc");
         exTable.setFormatter("pxfwritable_export");
 
@@ -613,6 +612,30 @@ public abstract class TableFactory {
         return getPxfJdbcReadableTable(name, fields, dataSourcePath, driver,
             dbUrl, true, partitionByColumnIndex, rangeExpression,
             interval, user, partitionType, server, null);
+    }
+
+    /**
+     * Generates a PXF External Readable or Foreign Table using JDBC profile, partitioned by given column
+     * on a given range with a given interval.
+     * Recommended to use for large tables.
+     *
+     * @param name name of the external table which will be generated
+     * @param fields fields of the external table
+     * @param dataSourcePath path to the data object i.e. schema_name.table_name
+     * @param partitionByColumnIndex index of column which table is partitioned/fragmented by
+     * @param rangeExpression partition range expression
+     * @param interval interval expression
+     * @param partitionType partition type used to get fragments
+     * @param customParameters additional user parameters
+     * @return PXF Readable External or Foreign table
+     */
+    public static ExternalTable getPxfJdbcReadablePartitionedTable(
+            String name, String[] fields, String dataSourcePath, Integer partitionByColumnIndex,
+            String rangeExpression, String interval, EnumPartitionType partitionType, String server, String customParameters) {
+
+        return getPxfJdbcReadableTable(name, fields, dataSourcePath, null,
+                null, true, partitionByColumnIndex, rangeExpression,
+                interval, null, partitionType, server, customParameters);
     }
 
     /**

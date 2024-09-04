@@ -43,6 +43,7 @@ RUN set -eux; \
          echo '#!/bin/sh' >> /etc/profile.d/jdk_home.sh; \
          echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64' >> /etc/profile.d/jdk_home.sh; \
          echo 'export PATH=$JAVA_HOME/bin:$PATH' >> /etc/profile.d/jdk_home.sh; \
+         update-locale LANG=en_US.UTF-8; \
          ;; \
        *) \
          echo "Unknown OS: '$OS'"; \

@@ -57,14 +57,15 @@ WORKDIR /tmp/build
 
 # create separate image with files we don't want to keep in base image
 FROM base as build
-ENV JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8
 COPY . /tmp/build/pxf_src
-RUN bash -c "source gpdb_src/concourse/scripts/common.bash && \
+ENV JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8
+SHELL ["bash", "-c"]
+RUN source gpdb_src/concourse/scripts/common.bash && \
     install_gpdb && \
     source '/usr/local/greenplum-db-devel/greenplum_path.sh' && \
     mkdir ${OUTPUT_ARTIFACT_DIR} && \
     export SKIP_FDW_BUILD_REASON=0 && \
-    pxf_src/concourse/scripts/compile_pxf.bash"
+    pxf_src/concourse/scripts/compile_pxf.bash
 
 # create test image which prepares base image and keeps only pxf artifacts from build image
 FROM base as test

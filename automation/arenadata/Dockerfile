@@ -53,7 +53,7 @@ ENV GOPATH=$HOME/go
 ENV PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
 RUN go install github.com/onsi/ginkgo/ginkgo@latest
 
-SHELL [ "bash" ]
+SHELL ["bash", "-c"]
 # Install gpdb source files
 WORKDIR /home/gpadmin/
 RUN mkdir -p /data1/master /data1/primary /data1/mirror && chmod -R 755 /data1 && \

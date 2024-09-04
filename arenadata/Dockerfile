@@ -59,7 +59,7 @@ WORKDIR /tmp/build
 FROM base as build
 COPY . /tmp/build/pxf_src
 ENV JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8
-SHELL [ "bash" ]
+SHELL ["bash", "-c"]
 RUN source gpdb_src/concourse/scripts/common.bash && \
     install_gpdb && \
     source '/usr/local/greenplum-db-devel/greenplum_path.sh' && \
